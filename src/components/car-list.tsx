@@ -1,50 +1,72 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
+import type { CarRecord, CarStatus } from "@/types/car"
 
-const PLACEHOLDER_CARS = [
-  {
-    id: 1,
-    make: "Volvo",
-    model: "V60",
-    year: 2019,
-    price: 189000,
-    mileage: 87000,
-    status: "Interested",
-    statusVariant: "default" as const,
-  },
-  {
-    id: 2,
-    make: "BMW",
-    model: "320d",
-    year: 2021,
-    price: 249000,
-    mileage: 42000,
-    status: "Contacted",
-    statusVariant: "secondary" as const,
-  },
-]
+const STATUS_LABEL: Record<CarStatus, string> = {
+  interested: "Interested",
+  contacted: "Contacted",
+  pass: "Pass",
+}
 
-export function CarList() {
+const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
+  interested: "default",
+  contacted: "secondary",
+  pass: "outline",
+}
+
+interface CarListProps {
+  cars: CarRecord[]
+  selectedId?: number | null
+  onSelect: (car: CarRecord) => void
+}
+
+export function CarList({ cars, selectedId, onSelect }: CarListProps) {
+  if (cars.length === 0) {
+    return (
+      <div className="px-4 py-6 text-xs text-muted-foreground">
+        No cars yet. Paste a URL above.
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col">
-      {PLACEHOLDER_CARS.map((car) => (
+      {cars.map((car) => (
         <div
           key={car.id}
-          className="flex flex-col gap-1 border-b border-border px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => onSelect(car)}
+          className={`flex gap-3 border-b border-border px-4 py-3 cursor-pointer transition-colors ${
+            car.id === selectedId ? "bg-accent" : "hover:bg-accent/50"
+          }`}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {car.year} {car.make} {car.model}
-            </span>
-            <Badge variant={car.statusVariant} className="text-xs">
-              {car.status}
-            </Badge>
+          {/* Thumbnail */}
+          <div className="w-14 h-10 shrink-0 rounded bg-muted overflow-hidden">
+            {car.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={car.photoUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : null}
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>{car.price.toLocaleString("sv-SE")} kr</span>
-            <span>·</span>
-            <span>{car.mileage.toLocaleString("sv-SE")} km</span>
+
+          {/* Info */}
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium truncate">
+                {car.year} {car.make} {car.model}
+              </span>
+              <Badge variant={STATUS_VARIANT[car.status]} className="text-xs shrink-0">
+                {STATUS_LABEL[car.status]}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {car.price != null && <span>{car.price.toLocaleString("sv-SE")} kr</span>}
+              {car.price != null && car.mileage != null && <span>·</span>}
+              {car.mileage != null && <span>{car.mileage.toLocaleString("sv-SE")} km</span>}
+            </div>
           </div>
         </div>
       ))}
