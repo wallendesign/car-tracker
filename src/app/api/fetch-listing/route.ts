@@ -51,6 +51,30 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Extract image URLs before stripping tags
+  const imgUrls: string[] = []
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+  let match
+  while ((match = imgRegex.exec(html)) !== null) {
+    const src = match[1]
+    // Only keep large images (likely listing photos, not icons/logos)
+    if (
+      src.startsWith("http") &&
+      !src.includes("logo") &&
+      !src.includes("icon") &&
+      !src.includes("avatar") &&
+      !src.includes("sprite") &&
+      (src.includes("cdn") || src.includes("img") || src.includes("photo") || src.includes("image") || src.includes("media") || src.includes("upload"))
+    ) {
+      imgUrls.push(src)
+    }
+  }
+
+  // Also check og:image meta tag — most reliable for main listing photo
+  const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  const ogImage = ogImageMatch?.[1] ?? null
+
   // Strip scripts/styles to reduce token count, keep meaningful text
   const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -59,5 +83,8 @@ export async function POST(req: NextRequest) {
     .replace(/\s+/g, " ")
     .slice(0, 15000)
 
-  return NextResponse.json({ html: stripped, url })
+  // Best photo: og:image first, then first matching img src
+  const photoUrl = ogImage ?? imgUrls[0] ?? null
+
+  return NextResponse.json({ html: stripped, url, photoUrl })
 }

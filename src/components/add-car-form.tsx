@@ -55,7 +55,7 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
       price: analyzeData.price,
       mileage: analyzeData.mileage,
       location: analyzeData.location,
-      photoUrl: analyzeData.photoUrl,
+      photoUrl: fetchData.photoUrl ?? analyzeData.photoUrl,
       aiModelOverview: null,
       aiCommonIssues: null,
       aiValueAssessment: null,
