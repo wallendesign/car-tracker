@@ -2,6 +2,45 @@ import { NextRequest, NextResponse } from "next/server"
 
 const ALLOWED_DOMAINS = ["blocket.se", "bytbil.com", "autouncle.se"]
 
+function extractPhotoUrl(html: string): string | null {
+  // 1. og:image meta tag (both attribute orders)
+  const ogMatch =
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  if (ogMatch?.[1]) return ogMatch[1]
+
+  // 2. JSON-LD structured data — "image" field
+  const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+  if (jsonLdMatch) {
+    for (const block of jsonLdMatch) {
+      const content = block.replace(/<script[^>]*>/, "").replace(/<\/script>/, "")
+      try {
+        const json = JSON.parse(content)
+        const img = json.image ?? json.images?.[0]
+        if (typeof img === "string" && img.startsWith("http")) return img
+        if (Array.isArray(img) && img[0]?.startsWith("http")) return img[0]
+        if (typeof img?.url === "string") return img.url
+      } catch { /* skip malformed JSON */ }
+    }
+  }
+
+  // 3. __NEXT_DATA__ — Blocket and other Next.js marketplaces embed all listing data here
+  const nextDataMatch = html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i)
+  if (nextDataMatch) {
+    try {
+      const json = JSON.parse(nextDataMatch[1])
+      const jsonStr = JSON.stringify(json)
+      // Look for image CDN URLs in the JSON blob
+      const cdnMatch = jsonStr.match(/https?:\/\/[^"]*(?:cdn|img|image|photo|media|upload)[^"]*\.(?:jpg|jpeg|png|webp)[^"]*/)
+      if (cdnMatch) return cdnMatch[0]
+    } catch { /* skip */ }
+  }
+
+  // 4. Any https image URL in the raw HTML that looks like a listing photo
+  const srcMatch = html.match(/https?:\/\/[^"'\s]*(?:cdn|img|photo|media|upload)[^"'\s]*\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s]*)?/)
+  return srcMatch?.[0] ?? null
+}
+
 export async function POST(req: NextRequest) {
   const { url } = await req.json()
 
@@ -51,40 +90,16 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Extract image URLs before stripping tags
-  const imgUrls: string[] = []
-  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
-  let match
-  while ((match = imgRegex.exec(html)) !== null) {
-    const src = match[1]
-    // Only keep large images (likely listing photos, not icons/logos)
-    if (
-      src.startsWith("http") &&
-      !src.includes("logo") &&
-      !src.includes("icon") &&
-      !src.includes("avatar") &&
-      !src.includes("sprite") &&
-      (src.includes("cdn") || src.includes("img") || src.includes("photo") || src.includes("image") || src.includes("media") || src.includes("upload"))
-    ) {
-      imgUrls.push(src)
-    }
-  }
+  // Extract photo before stripping scripts/tags
+  const photoUrl = extractPhotoUrl(html)
 
-  // Also check og:image meta tag — most reliable for main listing photo
-  const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
-  const ogImage = ogImageMatch?.[1] ?? null
-
-  // Strip scripts/styles to reduce token count, keep meaningful text
+  // Strip scripts/styles to reduce token count
   const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .slice(0, 15000)
-
-  // Best photo: og:image first, then first matching img src
-  const photoUrl = ogImage ?? imgUrls[0] ?? null
 
   return NextResponse.json({ html: stripped, url, photoUrl })
 }
