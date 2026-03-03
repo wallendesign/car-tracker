@@ -45,7 +45,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
             {car.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={car.photoUrl}
+                src={`/api/image-proxy?url=${encodeURIComponent(car.photoUrl)}`}
                 alt=""
                 className="w-full h-full object-cover"
               />

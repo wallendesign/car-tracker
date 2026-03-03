@@ -101,7 +101,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
       {car.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={car.photoUrl}
+          src={`/api/image-proxy?url=${encodeURIComponent(car.photoUrl)}`}
           alt={`${car.year} ${car.make} ${car.model}`}
           className="aspect-video w-full rounded-md object-cover bg-muted"
         />
