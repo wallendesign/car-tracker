@@ -20,13 +20,13 @@ export async function POST(req: NextRequest) {
     const { object } = await generateObject({
       model: anthropic("claude-haiku-4-5-20251001"),
       schema: SummarySchema,
-      prompt: `Generate a research summary for this used car listing in Sweden:
+      prompt: `Generera en forskningssammanfattning för denna begagnade bilannons i Sverige:
 
 ${year} ${make} ${model}
-${price != null ? `Asking price: ${price.toLocaleString("sv-SE")} SEK` : "Price: not listed"}
-${mileage != null ? `Mileage: ${mileage.toLocaleString("sv-SE")} km` : "Mileage: not listed"}
+${price != null ? `Begärt pris: ${price.toLocaleString("sv-SE")} kr` : "Pris: ej angivet"}
+${mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} km` : "Miltal: ej angivet"}
 
-Write in English. Be concise and practical — this is for a buyer doing research.`,
+Skriv på svenska. Var kortfattad och praktisk — detta är för en köpare som gör research.`,
     })
 
     return NextResponse.json(object)
