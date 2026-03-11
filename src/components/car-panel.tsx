@@ -9,9 +9,9 @@ import type { CarRecord, CarStatus } from "@/types/car"
 const STATUSES: CarStatus[] = ["interested", "contacted", "pass"]
 
 const STATUS_LABEL: Record<CarStatus, string> = {
-  interested: "Interested",
-  contacted: "Contacted",
-  pass: "Pass",
+  interested: "Intresserad",
+  contacted: "Kontaktad",
+  pass: "Passar ej",
 }
 
 const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
@@ -34,7 +34,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
   if (!car) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Select a car to view details
+        Välj en bil för att visa detaljer
       </div>
     )
   }
@@ -87,10 +87,10 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
   }
 
   const fields = [
-    car.price != null && { label: "Price", value: `${car.price.toLocaleString("sv-SE")} kr` },
-    car.mileage != null && { label: "Mileage", value: `${car.mileage.toLocaleString("sv-SE")} km` },
-    { label: "Year", value: String(car.year) },
-    car.location && { label: "Location", value: car.location },
+    car.price != null && { label: "Pris", value: `${car.price.toLocaleString("sv-SE")} kr` },
+    car.mileage != null && { label: "Miltal", value: `${car.mileage.toLocaleString("sv-SE")} km` },
+    { label: "Årsmodell", value: String(car.year) },
+    car.location && { label: "Ort", value: car.location },
   ].filter(Boolean) as { label: string; value: string }[]
 
   const hasSummary = car.aiModelOverview || car.aiCommonIssues || car.aiValueAssessment
@@ -107,7 +107,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
         />
       ) : (
         <div className="aspect-video w-full rounded-md bg-muted flex items-center justify-center">
-          <span className="text-xs text-muted-foreground">No photo</span>
+          <span className="text-xs text-muted-foreground">Ingen bild</span>
         </div>
       )}
 
@@ -123,7 +123,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
             rel="noopener noreferrer"
             className="text-sm text-muted-foreground hover:underline"
           >
-            {car.marketplace} listing ↗
+            {car.marketplace} annons ↗
           </a>
         </div>
         <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>
@@ -145,7 +145,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
 
       {/* Status */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Statusändring</span>
         <div className="flex gap-2">
           {STATUSES.map((s) => (
             <button
@@ -168,14 +168,14 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
       {/* AI Summary */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AI Summary</span>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AI-sammanfattning</span>
           {!hasSummary && (
             <button
               onClick={handleGenerateSummary}
               disabled={generating}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             >
-              {generating ? "Generating..." : "Generate"}
+              {generating ? "Genererar..." : "Generera"}
             </button>
           )}
         </div>
@@ -186,26 +186,26 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
           <div className="flex flex-col gap-4">
             {car.aiModelOverview && (
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Overview</span>
+                <span className="text-xs text-muted-foreground">Översikt</span>
                 <p className="text-sm">{car.aiModelOverview}</p>
               </div>
             )}
             {car.aiCommonIssues && (
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Common issues</span>
+                <span className="text-xs text-muted-foreground">Kända problem</span>
                 <p className="text-sm">{car.aiCommonIssues}</p>
               </div>
             )}
             {car.aiValueAssessment && (
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Value assessment</span>
+                <span className="text-xs text-muted-foreground">Värdebedömning</span>
                 <p className="text-sm">{car.aiValueAssessment}</p>
               </div>
             )}
           </div>
         ) : !generating && (
           <p className="text-xs text-muted-foreground">
-            Get an AI-generated overview, known issues, and price verdict for this car.
+            Få en AI-genererad översikt, kända problem och prisvärdering för denna bil.
           </p>
         )}
       </div>
@@ -217,7 +217,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
         onClick={handleDelete}
         className="text-xs text-muted-foreground hover:text-destructive transition-colors text-left"
       >
-        Remove this car
+        Ta bort bil
       </button>
     </div>
   )

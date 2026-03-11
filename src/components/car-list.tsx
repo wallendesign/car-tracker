@@ -10,9 +10,9 @@ const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
 }
 
 const STATUS_LABEL: Record<CarStatus, string> = {
-  interested: "Interested",
-  contacted: "Contacted",
-  pass: "Pass",
+  interested: "Intresserad",
+  contacted: "Kontaktad",
+  pass: "Passar ej",
 }
 
 interface CarListProps {
@@ -25,7 +25,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   if (cars.length === 0) {
     return (
       <div className="px-4 py-6 text-xs text-muted-foreground">
-        No cars yet. Paste a URL above.
+        Inga bilar ännu. Klistra in en länk ovan.
       </div>
     )
   }
@@ -35,11 +35,11 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
       <thead>
         <tr className="border-b border-border text-xs text-muted-foreground">
           <th className="w-12 py-2 px-3 font-normal text-left"></th>
-          <th className="py-2 px-3 font-normal text-left">Model</th>
-          <th className="py-2 px-3 font-normal text-right">Year</th>
-          <th className="py-2 px-3 font-normal text-right">HP</th>
-          <th className="py-2 px-3 font-normal text-right">Mileage</th>
-          <th className="py-2 px-3 font-normal text-right">Price</th>
+          <th className="py-2 px-3 font-normal text-left">Modell</th>
+          <th className="py-2 px-3 font-normal text-right">År</th>
+          <th className="py-2 px-3 font-normal text-right">HK</th>
+          <th className="py-2 px-3 font-normal text-right">Miltal</th>
+          <th className="py-2 px-3 font-normal text-right">Pris</th>
           <th className="py-2 px-3 font-normal text-left">Status</th>
         </tr>
       </thead>

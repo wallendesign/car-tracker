@@ -44,7 +44,7 @@ export function AppShell() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
-        <span className="text-sm font-medium tracking-tight">Car Tracker</span>
+        <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

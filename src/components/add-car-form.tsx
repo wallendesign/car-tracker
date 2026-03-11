@@ -12,9 +12,9 @@ type Step = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
 
 const STEP_LABEL: Record<Step, string | null> = {
   idle: null,
-  fetching: "Fetching listing...",
-  analyzing: "Analyzing with AI...",
-  summarizing: "Generating summary...",
+  fetching: "Hämtar annons...",
+  analyzing: "Analyserar med AI...",
+  summarizing: "Genererar sammanfattning...",
   error: null,
 }
 
@@ -101,7 +101,7 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
         type="url"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        placeholder="Paste Blocket, Bytbil or AutoUncle URL..."
+        placeholder="Klistra in Blocket, Bytbil eller AutoUncle-länk..."
         disabled={step !== "idle" && step !== "error"}
         className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
       />
