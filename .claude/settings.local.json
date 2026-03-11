@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:dexie.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:zustand.docs.pmnd.rs)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "WebFetch(domain:linear.style)",
+      "WebFetch(domain:pmnd.rs)",
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash([ -f \"/Users/markuswallen/Desktop/my-portfolio/src/types/car.ts\" ] && echo \"FOUND: src/types/car.ts\" || echo \"MISSING: src/types/car.ts\"\n[ -f \"/Users/markuswallen/Desktop/my-portfolio/src/lib/db.ts\" ] && echo \"FOUND: src/lib/db.ts\" || echo \"MISSING: src/lib/db.ts\"\n[ -f \"/Users/markuswallen/Desktop/my-portfolio/src/lib/car-store.ts\" ] && echo \"FOUND: src/lib/car-store.ts\" || echo \"MISSING: src/lib/car-store.ts\"\n[ -f \"/Users/markuswallen/Desktop/my-portfolio/.planning/phases/01-foundation/01-02-SUMMARY.md\" ] && echo \"FOUND: 01-02-SUMMARY.md\" || echo \"MISSING: 01-02-SUMMARY.md\"\n[ ! -f \"/Users/markuswallen/Desktop/my-portfolio/src/components/persistence-proof.tsx\" ] && echo \"CONFIRMED DELETED: persistence-proof.tsx\" || echo \"STILL EXISTS \\(should be deleted\\): persistence-proof.tsx\")",
+      "Bash(ls .env*:*)",
+      "Bash(npm install:*)",
+      "Bash(gh auth:*)",
+      "Bash(npm i:*)",
+      "Bash(sudo npm:*)",
+      "WebFetch(domain:car-tracker2-mt3w02w2e-markus-14islandscos-projects.vercel.app)",
+      "Bash(curl:*)"
+    ]
+  }
+}

@@ -16,7 +16,10 @@ export function AppShell() {
   }, [])
 
   function handleAdd(car: CarRecord) {
-    setCars((prev) => [car, ...prev])
+    setCars((prev) => {
+      const exists = prev.some((c) => c.id === car.id)
+      return exists ? prev.map((c) => (c.id === car.id ? car : c)) : [car, ...prev]
+    })
     setSelected(car)
   }
 
@@ -45,12 +48,16 @@ export function AppShell() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-80 shrink-0 overflow-y-auto border-r border-border flex flex-col">
+        {/* Car table — 2/3 width */}
+        <div className="flex w-2/3 shrink-0 flex-col border-r border-border">
           <AddCarForm onAdd={handleAdd} />
-          <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
-        </aside>
+          <div className="flex-1 overflow-y-auto">
+            <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
+          </div>
+        </div>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Detail panel — 1/3 width */}
+        <main className="w-1/3 overflow-y-auto p-6">
           <CarPanel
             car={selected}
             onStatusChange={handleStatusChange}

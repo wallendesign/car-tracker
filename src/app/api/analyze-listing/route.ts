@@ -9,6 +9,7 @@ const CarSchema = z.object({
   year: z.number().describe("Model year as integer"),
   price: z.number().nullable().describe("Asking price in SEK as integer, null if not found"),
   mileage: z.number().nullable().describe("Odometer reading in km as integer, null if not found"),
+  horsepower: z.number().nullable().describe("Engine power in horsepower (hk/hp) as integer, null if not found"),
   location: z.string().nullable().describe("City or region, null if not found"),
   photoUrl: z.string().nullable().describe("Main listing photo URL, null if not found"),
   marketplace: z.enum(["blocket", "bytbil", "autouncle"]),

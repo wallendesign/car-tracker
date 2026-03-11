@@ -16,6 +16,7 @@ export interface CarRecord {
   year: number             // Model year, e.g. 2019
   price: number | null     // Asking price in SEK; null if AI cannot extract
   mileage: number | null   // Odometer in km; null if AI cannot extract
+  horsepower: number | null // Engine power in hp; null if AI cannot extract
   location: string | null  // City or region string; null if not available
   photoUrl: string | null  // Main listing photo URL (external CDN); null if not available
   // AI summary fields (populated in Phase 4 — null until then)
