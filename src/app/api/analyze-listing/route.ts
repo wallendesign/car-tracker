@@ -13,6 +13,15 @@ const CarSchema = z.object({
   location: z.string().nullable().describe("City or region, null if not found"),
   photoUrl: z.string().nullable().describe("Main listing photo URL, null if not found"),
   marketplace: z.enum(["blocket", "bytbil", "autouncle"]),
+  bodyType: z.string().nullable().describe("Body type e.g. Kombi, Sedan, SUV, null if not found"),
+  fuelType: z.string().nullable().describe("Fuel type e.g. Bensin, Diesel, El, Hybrid, null if not found"),
+  transmission: z.string().nullable().describe("Transmission e.g. Automatisk, Manuell, null if not found"),
+  driveType: z.string().nullable().describe("Drive type e.g. Tvåhjulsdriven, Fyrhjulsdriven, null if not found"),
+  engineVolume: z.string().nullable().describe("Engine displacement e.g. '2.0 l', null if not found"),
+  color: z.string().nullable().describe("Car color in Swedish, null if not found"),
+  seats: z.number().nullable().describe("Number of seats as integer, null if not found"),
+  registrationDate: z.string().nullable().describe("Registration date as string e.g. '2013-10-09', null if not found"),
+  equipment: z.array(z.string()).nullable().describe("List of equipment/options from the listing, empty array if none found"),
 })
 
 export async function POST(req: NextRequest) {

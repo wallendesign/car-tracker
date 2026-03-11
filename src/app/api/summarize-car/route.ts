@@ -10,7 +10,7 @@ const SummarySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const { make, model, year, price, mileage } = await req.json()
+  const { make, model, year, price, mileage, fuelType, transmission, driveType, horsepower, equipment } = await req.json()
 
   if (!make || !model || !year) {
     return NextResponse.json({ error: "Missing car data" }, { status: 400 })
@@ -24,7 +24,12 @@ export async function POST(req: NextRequest) {
 
 ${year} ${make} ${model}
 ${price != null ? `Begärt pris: ${price.toLocaleString("sv-SE")} kr` : "Pris: ej angivet"}
-${mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} km` : "Miltal: ej angivet"}
+${mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} mil` : "Miltal: ej angivet"}
+${horsepower != null ? `Effekt: ${horsepower} hk` : ""}
+${fuelType ? `Drivmedel: ${fuelType}` : ""}
+${transmission ? `Växellåda: ${transmission}` : ""}
+${driveType ? `Drivhjul: ${driveType}` : ""}
+${equipment?.length ? `Utrustning: ${equipment.join(", ")}` : ""}
 
 Skriv på svenska. Var kortfattad och praktisk — detta är för en köpare som gör research.`,
     })

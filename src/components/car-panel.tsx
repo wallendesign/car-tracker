@@ -210,6 +210,54 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
         )}
       </div>
 
+      {/* Specs */}
+      {(() => {
+        const specs = [
+          car.bodyType && { label: "Biltyp", value: car.bodyType },
+          car.fuelType && { label: "Drivmedel", value: car.fuelType },
+          car.transmission && { label: "Växellåda", value: car.transmission },
+          car.driveType && { label: "Drivhjul", value: car.driveType },
+          car.engineVolume && { label: "Motorvolym", value: car.engineVolume },
+          car.color && { label: "Färg", value: car.color },
+          car.seats != null && { label: "Säten", value: String(car.seats) },
+          car.registrationDate && { label: "Reg.datum", value: car.registrationDate },
+        ].filter(Boolean) as { label: string; value: string }[]
+        if (specs.length === 0) return null
+        return (
+          <>
+            <Separator />
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Specifikationer</span>
+              <div className="grid grid-cols-2 gap-3">
+                {specs.map(({ label, value }) => (
+                  <div key={label} className="flex flex-col gap-0.5">
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className="text-sm font-medium">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* Equipment */}
+      {car.equipment && car.equipment.length > 0 && (
+        <>
+          <Separator />
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Utrustning</span>
+            <div className="flex flex-wrap gap-1">
+              {car.equipment.map((item) => (
+                <span key={item} className="text-xs border border-border rounded px-2 py-0.5 text-muted-foreground">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       <Separator />
 
       {/* Delete */}

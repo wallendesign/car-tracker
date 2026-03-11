@@ -59,6 +59,15 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
       horsepower: analyzeData.horsepower,
       location: analyzeData.location,
       photoUrl: fetchData.photoUrl ?? analyzeData.photoUrl,
+      bodyType: analyzeData.bodyType ?? null,
+      fuelType: analyzeData.fuelType ?? null,
+      transmission: analyzeData.transmission ?? null,
+      driveType: analyzeData.driveType ?? null,
+      engineVolume: analyzeData.engineVolume ?? null,
+      color: analyzeData.color ?? null,
+      seats: analyzeData.seats ?? null,
+      registrationDate: analyzeData.registrationDate ?? null,
+      equipment: analyzeData.equipment ?? null,
       aiModelOverview: null,
       aiCommonIssues: null,
       aiValueAssessment: null,
@@ -76,7 +85,7 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
     const summaryRes = await fetch("/api/summarize-car", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ make: car.make, model: car.model, year: car.year, price: car.price, mileage: car.mileage }),
+      body: JSON.stringify({ make: car.make, model: car.model, year: car.year, price: car.price, mileage: car.mileage, horsepower: car.horsepower, fuelType: car.fuelType, transmission: car.transmission, driveType: car.driveType, equipment: car.equipment }),
     })
     const summaryData = await summaryRes.json()
 
