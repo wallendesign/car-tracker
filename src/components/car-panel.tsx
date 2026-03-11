@@ -88,7 +88,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
 
   const fields = [
     car.price != null && { label: "Pris", value: `${car.price.toLocaleString("sv-SE")} kr` },
-    car.mileage != null && { label: "Miltal", value: `${car.mileage.toLocaleString("sv-SE")} km` },
+    car.mileage != null && { label: "Miltal", value: `${car.mileage.toLocaleString("sv-SE")} mil` },
     { label: "Årsmodell", value: String(car.year) },
     car.location && { label: "Ort", value: car.location },
   ].filter(Boolean) as { label: string; value: string }[]

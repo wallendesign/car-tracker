@@ -83,7 +83,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
 
             {/* Mileage */}
             <td className="py-2 px-3 text-right text-muted-foreground tabular-nums whitespace-nowrap">
-              {car.mileage != null ? `${car.mileage.toLocaleString("sv-SE")} km` : "—"}
+              {car.mileage != null ? `${car.mileage.toLocaleString("sv-SE")} mil` : "—"}
             </td>
 
             {/* Price */}
