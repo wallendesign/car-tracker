@@ -6,6 +6,40 @@ import { Separator } from "@/components/ui/separator"
 import { updateCarStatus, deleteCar, updateCarAISummary } from "@/lib/db"
 import type { CarRecord, CarStatus } from "@/types/car"
 
+function parseSummaryField(text: string): { intro: string; bullets: string[] } {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean)
+  const bullets: string[] = []
+  const introLines: string[] = []
+  for (const line of lines) {
+    if (/^[•\-\*]/.test(line)) {
+      bullets.push(line.replace(/^[•\-\*]\s*/, ""))
+    } else {
+      introLines.push(line)
+    }
+  }
+  return { intro: introLines.join(" "), bullets }
+}
+
+function SummaryField({ label, text }: { label: string; text: string }) {
+  const { intro, bullets } = parseSummaryField(text)
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {intro && <p className="text-sm">{intro}</p>}
+      {bullets.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {bullets.map((b, i) => (
+            <li key={i} className="flex gap-2 text-sm">
+              <span className="text-muted-foreground shrink-0 mt-px">•</span>
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 const STATUSES: CarStatus[] = ["interested", "contacted", "pass"]
 
 const STATUS_LABEL: Record<CarStatus, string> = {
@@ -65,6 +99,11 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
         year: car.year,
         price: car.price,
         mileage: car.mileage,
+        horsepower: car.horsepower,
+        fuelType: car.fuelType,
+        transmission: car.transmission,
+        driveType: car.driveType,
+        equipment: car.equipment,
       }),
     })
 
@@ -169,39 +208,22 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AI-sammanfattning</span>
-          {!hasSummary && (
-            <button
-              onClick={handleGenerateSummary}
-              disabled={generating}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              {generating ? "Genererar..." : "Generera"}
-            </button>
-          )}
+          <button
+            onClick={handleGenerateSummary}
+            disabled={generating}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            {generating ? "Genererar..." : hasSummary ? "Regenerera" : "Generera"}
+          </button>
         </div>
 
         {genError && <p className="text-xs text-destructive">{genError}</p>}
 
         {hasSummary ? (
           <div className="flex flex-col gap-4">
-            {car.aiModelOverview && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Översikt</span>
-                <p className="text-sm">{car.aiModelOverview}</p>
-              </div>
-            )}
-            {car.aiCommonIssues && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Kända problem</span>
-                <p className="text-sm">{car.aiCommonIssues}</p>
-              </div>
-            )}
-            {car.aiValueAssessment && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Värdebedömning</span>
-                <p className="text-sm">{car.aiValueAssessment}</p>
-              </div>
-            )}
+            {car.aiModelOverview && <SummaryField label="Översikt" text={car.aiModelOverview} />}
+            {car.aiCommonIssues && <SummaryField label="Kända problem" text={car.aiCommonIssues} />}
+            {car.aiValueAssessment && <SummaryField label="Värdebedömning" text={car.aiValueAssessment} />}
           </div>
         ) : !generating && (
           <p className="text-xs text-muted-foreground">

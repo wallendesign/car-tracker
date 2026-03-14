@@ -4,9 +4,15 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { z } from "zod"
 
 const SummarySchema = z.object({
-  aiModelOverview: z.string().describe("2-3 sentences about this make/model/year in general — reliability, what it's known for, who it suits"),
-  aiCommonIssues: z.string().describe("2-3 sentences on known problems, recalls, things to inspect when buying this specific model year"),
-  aiValueAssessment: z.string().describe("1-2 sentences on whether the asking price is fair given the mileage and Swedish market — be direct"),
+  aiModelOverview: z.string().describe(
+    "1-2 sentence intro about this make/model/year, then 3-4 bullet points each starting with '• ' covering: reliability reputation, key strengths, who it suits, and one notable weakness. No other formatting."
+  ),
+  aiCommonIssues: z.string().describe(
+    "1 sentence framing the risk level for this model year, then 3-4 bullet points each starting with '• ' listing specific known problems, recalls, or things to physically inspect when viewing the car. No other formatting."
+  ),
+  aiValueAssessment: z.string().describe(
+    "1-2 sentence direct verdict on whether the price is fair given mileage and Swedish market, then 2-3 bullet points each starting with '• ' with specific supporting context: typical market price range, mileage assessment, and one key value factor. No other formatting."
+  ),
 })
 
 export async function POST(req: NextRequest) {
@@ -20,7 +26,7 @@ export async function POST(req: NextRequest) {
     const { object } = await generateObject({
       model: anthropic("claude-haiku-4-5-20251001"),
       schema: SummarySchema,
-      prompt: `Generera en forskningssammanfattning för denna begagnade bilannons i Sverige:
+      prompt: `Generera en skanningsbar forskningssammanfattning för denna begagnade bilannons i Sverige:
 
 ${year} ${make} ${model}
 ${price != null ? `Begärt pris: ${price.toLocaleString("sv-SE")} kr` : "Pris: ej angivet"}
@@ -31,7 +37,8 @@ ${transmission ? `Växellåda: ${transmission}` : ""}
 ${driveType ? `Drivhjul: ${driveType}` : ""}
 ${equipment?.length ? `Utrustning: ${equipment.join(", ")}` : ""}
 
-Skriv på svenska. Var kortfattad och praktisk — detta är för en köpare som gör research.`,
+Skriv på svenska. Var kortfattad och direkt — köparen vill snabbt scanna nyckelpunkter, inte läsa långa stycken.
+Varje fält ska följa exakt detta format: en kort inledning, sedan punkter som börjar med "• ".`,
     })
 
     return NextResponse.json(object)
