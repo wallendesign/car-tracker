@@ -7,16 +7,26 @@ import { updateCarStatus, deleteCar, updateCarAISummary } from "@/lib/db"
 import type { CarRecord, CarStatus } from "@/types/car"
 
 function parseSummaryField(text: string): { intro: string; bullets: string[] } {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean)
   const bullets: string[] = []
   const introLines: string[] = []
-  for (const line of lines) {
+
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim()
+    if (!line) continue
+
     if (/^[•\-\*]/.test(line)) {
+      // Whole line is a bullet
       bullets.push(line.replace(/^[•\-\*]\s*/, ""))
+    } else if (line.includes("•")) {
+      // Inline bullets: "Intro sentence. • point 1 • point 2"
+      const parts = line.split("•").map((p) => p.trim()).filter(Boolean)
+      if (parts[0] && !/^[•\-\*]/.test(parts[0])) introLines.push(parts[0])
+      bullets.push(...parts.slice(1))
     } else {
       introLines.push(line)
     }
   }
+
   return { intro: introLines.join(" "), bullets }
 }
 

@@ -13,13 +13,6 @@ function worseOf(a: GradeLevel, b: GradeLevel): GradeLevel {
   return LEVEL_ORDER[Math.max(LEVEL_ORDER.indexOf(a), LEVEL_ORDER.indexOf(b))]
 }
 
-function listRankDesc(rank: number, total: number, bestWord: string, worstWord: string): string {
-  if (total < 2) return ""
-  if (rank === 1) return ` ${bestWord} i listan.`
-  if (rank === total) return ` ${worstWord} i listan.`
-  const suffix = rank <= 2 ? "a" : "e"
-  return ` ${rank}:${suffix} ${bestWord.toLowerCase()} av ${total} bilar.`
-}
 
 // Grade word used at start of tooltip
 const GRADE_WORD: Record<GradeLevel, string> = {
@@ -43,14 +36,9 @@ export function gradeYear(year: number | null | undefined, allCars: CarRecord[])
   else if (age <= 14) { level = "poor"; marketDesc = "Äldre bil – tänk på underhållskostnader och rostskydd." }
   else { level = "bad"; marketDesc = "Gammal bil – förvänta dig slitage och renoveringar." }
 
-  const validYears = allCars.map((c) => c.year).filter((y): y is number => y != null).sort((a, b) => b - a)
-  const rank = validYears.indexOf(year) + 1
-  // 10% list influence: only add list context to tooltip, not to grade
-  const listDesc = listRankDesc(rank, validYears.length, "Nyast", "Äldst")
-
   return {
     level,
-    tooltip: `${GRADE_WORD[level]} – ${age} år gammal. ${marketDesc}${listDesc}`,
+    tooltip: `${GRADE_WORD[level]} – ${age} år gammal. ${marketDesc}`,
   }
 }
 
@@ -66,13 +54,9 @@ export function gradeHorsepower(hp: number | null | undefined, allCars: CarRecor
   else if (hp >= 70) { level = "poor"; marketDesc = "Låg effekt – märks vid motorvägskörning och överkörning." }
   else { level = "bad"; marketDesc = "Mycket låg effekt – passa för stadskörning." }
 
-  const validHps = allCars.map((c) => c.horsepower).filter((h): h is number => h != null).sort((a, b) => b - a)
-  const rank = validHps.indexOf(hp) + 1
-  const listDesc = listRankDesc(rank, validHps.length, "Starkast", "Svagast")
-
   return {
     level,
-    tooltip: `${GRADE_WORD[level]} – ${marketDesc}${listDesc}`,
+    tooltip: `${GRADE_WORD[level]} – ${marketDesc}`,
   }
 }
 
@@ -107,10 +91,6 @@ export function gradeMileage(
   // 90% market (take worse of total + annual), 10% list (only in tooltip)
   const marketLevel = annualLevel ? worseOf(totalLevel, annualLevel) : totalLevel
 
-  const validMileages = allCars.map((c) => c.mileage).filter((m): m is number => m != null).sort((a, b) => a - b)
-  const rank = validMileages.indexOf(mileage) + 1
-  const listDesc = listRankDesc(rank, validMileages.length, "Lägst miltal", "Högst miltal")
-
   let marketDesc: string
   if (marketLevel === "great") marketDesc = "Mycket lågt – troligtvis välskött med minimal mekanisk belastning."
   else if (marketLevel === "good") marketDesc = "Lågt för åldern – bra tecken på sparsam körning."
@@ -122,7 +102,7 @@ export function gradeMileage(
 
   return {
     level: marketLevel,
-    tooltip: `${GRADE_WORD[marketLevel]}${annualStr} – ${marketDesc}${listDesc}`,
+    tooltip: `${GRADE_WORD[marketLevel]}${annualStr} – ${marketDesc}`,
   }
 }
 
