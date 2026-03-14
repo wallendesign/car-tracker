@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
 ${year} ${make} ${model}
 ${price != null ? `Begärt pris: ${price.toLocaleString("sv-SE")} kr` : "Pris: ej angivet"}
-${mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} mil` : "Miltal: ej angivet"}
+${mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} mil (svenska mil, 1 mil = 10 km)` : "Miltal: ej angivet"}
 ${horsepower != null ? `Effekt: ${horsepower} hk` : ""}
 ${fuelType ? `Drivmedel: ${fuelType}` : ""}
 ${transmission ? `Växellåda: ${transmission}` : ""}

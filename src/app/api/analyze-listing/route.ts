@@ -8,7 +8,7 @@ const CarSchema = z.object({
   model: z.string().describe("Model name, e.g. V60"),
   year: z.number().describe("Model year as integer"),
   price: z.number().nullable().describe("Asking price in SEK as integer, null if not found"),
-  mileage: z.number().nullable().describe("Odometer reading in km as integer, null if not found"),
+  mileage: z.number().nullable().describe("Odometer reading in Swedish mil (1 mil = 10 km) as integer — do NOT convert to km, return the mil value as shown on the listing, null if not found"),
   horsepower: z.number().nullable().describe("Engine power in horsepower (hk/hp) as integer, null if not found"),
   location: z.string().nullable().describe("City or region, null if not found"),
   photoUrl: z.string().nullable().describe("Main listing photo URL, null if not found"),
@@ -40,7 +40,9 @@ URL: ${url}
 Page text:
 ${html}
 
-Extract all available fields. For price and mileage, return numbers only (no units). Return null for any field you cannot find.`,
+Extract all available fields. For price and mileage, return numbers only (no units).
+IMPORTANT: Swedish car listings show mileage in "mil" (1 mil = 10 km). Return the mil value as-is — do NOT convert to km.
+Return null for any field you cannot find.`,
     })
 
     return NextResponse.json(object)
