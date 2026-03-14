@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { updateCarStatus, deleteCar, updateCarAISummary } from "@/lib/db"
+import { updateCarStatus, deleteCar, updateCarAISummary, updateCarData } from "@/lib/db"
 import type { CarRecord, CarStatus } from "@/types/car"
 
 function parseSummaryField(text: string): { intro: string; bullets: string[] } {
@@ -64,16 +64,29 @@ const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
   pass: "outline",
 }
 
+type RefreshStep = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
+
+const REFRESH_LABEL: Record<RefreshStep, string> = {
+  idle: "Uppdatera",
+  fetching: "Hämtar annons...",
+  analyzing: "Analyserar...",
+  summarizing: "Sammanfattar...",
+  error: "Försök igen",
+}
+
 interface CarPanelProps {
   car: CarRecord | null
   onStatusChange: (id: number, status: CarStatus) => void
   onDelete: (id: number) => void
+  onRefresh: (car: CarRecord) => void
   onSummaryGenerated: (id: number, fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">) => void
 }
 
-export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: CarPanelProps) {
+export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGenerated }: CarPanelProps) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
+  const [refreshStep, setRefreshStep] = useState<RefreshStep>("idle")
+  const [refreshError, setRefreshError] = useState<string | null>(null)
 
   if (!car) {
     return (
@@ -93,6 +106,80 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
     if (!car?.id) return
     await deleteCar(car.id)
     onDelete(car.id)
+  }
+
+  async function handleRefresh() {
+    if (!car?.id) return
+    setRefreshStep("fetching")
+    setRefreshError(null)
+
+    const fetchRes = await fetch("/api/fetch-listing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: car.listingUrl }),
+    })
+    const fetchData = await fetchRes.json()
+    if (!fetchRes.ok) { setRefreshError(fetchData.error); setRefreshStep("error"); return }
+
+    setRefreshStep("analyzing")
+
+    const analyzeRes = await fetch("/api/analyze-listing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ html: fetchData.html, url: car.listingUrl }),
+    })
+    const analyzeData = await analyzeRes.json()
+    if (!analyzeRes.ok) { setRefreshError(analyzeData.error); setRefreshStep("error"); return }
+
+    setRefreshStep("summarizing")
+
+    const summaryRes = await fetch("/api/summarize-car", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        make: analyzeData.make,
+        model: analyzeData.model,
+        year: analyzeData.year,
+        price: analyzeData.price,
+        mileage: analyzeData.mileage,
+        horsepower: analyzeData.horsepower,
+        fuelType: analyzeData.fuelType,
+        transmission: analyzeData.transmission,
+        driveType: analyzeData.driveType,
+        equipment: analyzeData.equipment,
+      }),
+    })
+    const summaryData = await summaryRes.json()
+
+    const refreshed: Omit<CarRecord, "id" | "status" | "createdAt"> = {
+      listingUrl: car.listingUrl,
+      marketplace: analyzeData.marketplace,
+      make: analyzeData.make,
+      model: analyzeData.model,
+      year: analyzeData.year,
+      price: analyzeData.price,
+      mileage: analyzeData.mileage,
+      horsepower: analyzeData.horsepower,
+      location: analyzeData.location,
+      photoUrl: fetchData.photoUrl ?? analyzeData.photoUrl,
+      bodyType: analyzeData.bodyType ?? null,
+      fuelType: analyzeData.fuelType ?? null,
+      transmission: analyzeData.transmission ?? null,
+      driveType: analyzeData.driveType ?? null,
+      engineVolume: analyzeData.engineVolume ?? null,
+      color: analyzeData.color ?? null,
+      seats: analyzeData.seats ?? null,
+      registrationDate: analyzeData.registrationDate ?? null,
+      equipment: analyzeData.equipment ?? null,
+      aiModelOverview: summaryRes.ok ? summaryData.aiModelOverview : car.aiModelOverview,
+      aiCommonIssues: summaryRes.ok ? summaryData.aiCommonIssues : car.aiCommonIssues,
+      aiValueAssessment: summaryRes.ok ? summaryData.aiValueAssessment : car.aiValueAssessment,
+    }
+
+    await updateCarData(car.id, refreshed)
+    const updatedCar: CarRecord = { ...refreshed, id: car.id, status: car.status, createdAt: car.createdAt }
+    onRefresh(updatedCar)
+    setRefreshStep("idle")
   }
 
   async function handleGenerateSummary() {
@@ -166,14 +253,24 @@ export function CarPanel({ car, onStatusChange, onDelete, onSummaryGenerated }: 
           <h2 className="text-lg font-semibold">
             {car.year} {car.make} {car.model}
           </h2>
-          <a
-            href={car.listingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            {car.marketplace} annons ↗
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={car.listingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-muted-foreground hover:underline"
+            >
+              {car.marketplace} annons ↗
+            </a>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshStep !== "idle" && refreshStep !== "error"}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              {REFRESH_LABEL[refreshStep]}
+            </button>
+          </div>
+          {refreshError && <p className="text-xs text-destructive mt-1">{refreshError}</p>}
         </div>
         <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>
       </div>

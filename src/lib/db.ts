@@ -44,6 +44,13 @@ export async function updateCarAISummary(
   await db.cars.update(id, fields)
 }
 
+export async function updateCarData(
+  id: number,
+  data: Omit<CarRecord, "id" | "status" | "createdAt">
+): Promise<void> {
+  await db.cars.update(id, data)
+}
+
 export async function deleteCar(id: number): Promise<void> {
   await db.cars.delete(id)
 }

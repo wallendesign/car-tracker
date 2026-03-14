@@ -28,6 +28,11 @@ export function AppShell() {
     setSelected((prev) => (prev?.id === id ? { ...prev, status } : prev))
   }
 
+  function handleRefresh(car: CarRecord) {
+    setCars((prev) => prev.map((c) => (c.id === car.id ? car : c)))
+    setSelected(car)
+  }
+
   function handleDelete(id: number) {
     setCars((prev) => prev.filter((c) => c.id !== id))
     setSelected((prev) => (prev?.id === id ? null : prev))
@@ -62,6 +67,7 @@ export function AppShell() {
             car={selected}
             onStatusChange={handleStatusChange}
             onDelete={handleDelete}
+            onRefresh={handleRefresh}
             onSummaryGenerated={handleSummaryGenerated}
           />
         </main>
