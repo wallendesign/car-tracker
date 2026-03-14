@@ -1,7 +1,7 @@
 // src/types/car.ts
 // Canonical data model — contract for Phase 2 (extraction) and Phase 3 (UI display)
 
-export type CarStatus = "interested" | "contacted" | "pass"
+export type CarStatus = "interested" | "contacted" | "pass" | "sold"
 
 export type Marketplace = "blocket" | "bytbil" | "autouncle"
 

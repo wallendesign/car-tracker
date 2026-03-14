@@ -41,6 +41,37 @@ function extractPhotoUrl(html: string): string | null {
   return srcMatch?.[0] ?? null
 }
 
+const SOLD_PATTERNS = [
+  // Blocket
+  "annonsen finns inte längre",
+  "annonsen är borttagen",
+  "annonsen har tagits bort",
+  "annonsen är inte aktiv",
+  "annonsen är inte längre aktiv",
+  "annonsen är avslutad",
+  // Bytbil
+  "bilen är tyvärr såld",
+  "annonsen är tyvärr borttagen",
+  "inte längre tillgänglig",
+  "bilen är såld",
+  // AutoUncle
+  "this listing is no longer available",
+  "this car has been sold",
+  "listing not found",
+  // Generic
+  "har tagits bort",
+  "no longer available",
+  "has been sold",
+  "page not found",
+  "404 not found",
+]
+
+function detectSold(html: string, httpStatus: number): boolean {
+  if (httpStatus === 404 || httpStatus === 410) return true
+  const lower = html.toLowerCase()
+  return SOLD_PATTERNS.some((p) => lower.includes(p))
+}
+
 export async function POST(req: NextRequest) {
   const { url } = await req.json()
 
@@ -63,6 +94,7 @@ export async function POST(req: NextRequest) {
   }
 
   let html: string
+  let httpStatus: number
   try {
     const res = await fetch(url, {
       headers: {
@@ -72,6 +104,7 @@ export async function POST(req: NextRequest) {
         "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8",
       },
     })
+    httpStatus = res.status
     html = await res.text()
   } catch {
     return NextResponse.json({ error: "Could not fetch listing" }, { status: 502 })
@@ -90,6 +123,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Detect sold/removed listings — check raw HTML before stripping
+  if (detectSold(html, httpStatus)) {
+    return NextResponse.json({ isSold: true, html: "", url, photoUrl: null })
+  }
+
   // Extract photo before stripping scripts/tags
   const photoUrl = extractPhotoUrl(html)
 
@@ -101,5 +139,5 @@ export async function POST(req: NextRequest) {
     .replace(/\s+/g, " ")
     .slice(0, 15000)
 
-  return NextResponse.json({ html: stripped, url, photoUrl })
+  return NextResponse.json({ isSold: false, html: stripped, url, photoUrl })
 }

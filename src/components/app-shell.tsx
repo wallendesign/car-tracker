@@ -5,11 +5,14 @@ import { AddCarForm } from "@/components/add-car-form"
 import { CarList } from "@/components/car-list"
 import { CarPanel } from "@/components/car-panel"
 import { getAllCars } from "@/lib/db"
+import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
 
 export function AppShell() {
   const [cars, setCars] = useState<CarRecord[]>([])
   const [selected, setSelected] = useState<CarRecord | null>(null)
+  const [refreshingAll, setRefreshingAll] = useState(false)
+  const [refreshProgress, setRefreshProgress] = useState({ current: 0, total: 0 })
 
   useEffect(() => {
     getAllCars().then(setCars)
@@ -30,7 +33,7 @@ export function AppShell() {
 
   function handleRefresh(car: CarRecord) {
     setCars((prev) => prev.map((c) => (c.id === car.id ? car : c)))
-    setSelected(car)
+    setSelected((prev) => (prev?.id === car.id ? car : prev))
   }
 
   function handleDelete(id: number) {
@@ -46,10 +49,40 @@ export function AppShell() {
     setSelected((prev) => (prev?.id === id ? { ...prev, ...fields } : prev))
   }
 
+  async function handleRefreshAll() {
+    const snapshot = [...cars]
+    setRefreshingAll(true)
+    setRefreshProgress({ current: 0, total: snapshot.length })
+
+    for (let i = 0; i < snapshot.length; i++) {
+      setRefreshProgress({ current: i + 1, total: snapshot.length })
+      const result = await refreshCar(snapshot[i])
+      setCars((prev) => prev.map((c) => (c.id === result.car.id ? result.car : c)))
+      setSelected((prev) => (prev?.id === result.car.id ? result.car : prev))
+    }
+
+    setRefreshingAll(false)
+  }
+
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
         <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
+        <div className="ml-auto">
+          {refreshingAll ? (
+            <span className="text-xs text-muted-foreground">
+              Uppdaterar {refreshProgress.current}/{refreshProgress.total}...
+            </span>
+          ) : (
+            <button
+              onClick={handleRefreshAll}
+              disabled={cars.length === 0}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+            >
+              Uppdatera alla
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

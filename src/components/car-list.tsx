@@ -19,12 +19,14 @@ const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
   interested: "default",
   contacted: "secondary",
   pass: "outline",
+  sold: "outline",
 }
 
 const STATUS_LABEL: Record<CarStatus, string> = {
   interested: "Intresserad",
   contacted: "Kontaktad",
   pass: "Passar ej",
+  sold: "Såld",
 }
 
 const GRADE_CLASS: Record<GradeLevel, string> = {
@@ -130,7 +132,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
       <div className="flex flex-col">
         {/* Filter bar */}
         <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
-          {(["all", "interested", "contacted", "pass"] as const).map((s) => (
+          {(["all", "interested", "contacted", "pass", "sold"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -242,7 +244,10 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     {/* Status */}
                     <td className="py-2 px-3">
                       {car.status !== "interested" && (
-                        <Badge variant={STATUS_VARIANT[car.status]} className="text-xs">
+                        <Badge
+                          variant={STATUS_VARIANT[car.status]}
+                          className={`text-xs${car.status === "sold" ? " opacity-50" : ""}`}
+                        >
                           {STATUS_LABEL[car.status]}
                         </Badge>
                       )}

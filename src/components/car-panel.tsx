@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { updateCarStatus, deleteCar, updateCarAISummary, updateCarData } from "@/lib/db"
+import { updateCarStatus, deleteCar, updateCarAISummary } from "@/lib/db"
+import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
 
 function parseSummaryField(text: string): { intro: string; bullets: string[] } {
@@ -50,18 +51,20 @@ function SummaryField({ label, text }: { label: string; text: string }) {
   )
 }
 
-const STATUSES: CarStatus[] = ["interested", "contacted", "pass"]
+const STATUSES: CarStatus[] = ["interested", "contacted", "pass", "sold"]
 
 const STATUS_LABEL: Record<CarStatus, string> = {
   interested: "Intresserad",
   contacted: "Kontaktad",
   pass: "Passar ej",
+  sold: "Såld",
 }
 
 const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
   interested: "default",
   contacted: "secondary",
   pass: "outline",
+  sold: "outline",
 }
 
 type RefreshStep = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
@@ -110,75 +113,14 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
 
   async function handleRefresh() {
     if (!car?.id) return
-    setRefreshStep("fetching")
     setRefreshError(null)
-
-    const fetchRes = await fetch("/api/fetch-listing", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: car.listingUrl }),
-    })
-    const fetchData = await fetchRes.json()
-    if (!fetchRes.ok) { setRefreshError(fetchData.error); setRefreshStep("error"); return }
-
-    setRefreshStep("analyzing")
-
-    const analyzeRes = await fetch("/api/analyze-listing", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ html: fetchData.html, url: car.listingUrl }),
-    })
-    const analyzeData = await analyzeRes.json()
-    if (!analyzeRes.ok) { setRefreshError(analyzeData.error); setRefreshStep("error"); return }
-
-    setRefreshStep("summarizing")
-
-    const summaryRes = await fetch("/api/summarize-car", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        make: analyzeData.make,
-        model: analyzeData.model,
-        year: analyzeData.year,
-        price: analyzeData.price,
-        mileage: analyzeData.mileage,
-        horsepower: analyzeData.horsepower,
-        fuelType: analyzeData.fuelType,
-        transmission: analyzeData.transmission,
-        driveType: analyzeData.driveType,
-        equipment: analyzeData.equipment,
-      }),
-    })
-    const summaryData = await summaryRes.json()
-
-    const refreshed: Omit<CarRecord, "id" | "status" | "createdAt"> = {
-      listingUrl: car.listingUrl,
-      marketplace: analyzeData.marketplace,
-      make: analyzeData.make,
-      model: analyzeData.model,
-      year: analyzeData.year,
-      price: analyzeData.price,
-      mileage: analyzeData.mileage,
-      horsepower: analyzeData.horsepower,
-      location: analyzeData.location,
-      photoUrl: fetchData.photoUrl ?? analyzeData.photoUrl,
-      bodyType: analyzeData.bodyType ?? null,
-      fuelType: analyzeData.fuelType ?? null,
-      transmission: analyzeData.transmission ?? null,
-      driveType: analyzeData.driveType ?? null,
-      engineVolume: analyzeData.engineVolume ?? null,
-      color: analyzeData.color ?? null,
-      seats: analyzeData.seats ?? null,
-      registrationDate: analyzeData.registrationDate ?? null,
-      equipment: analyzeData.equipment ?? null,
-      aiModelOverview: summaryRes.ok ? summaryData.aiModelOverview : car.aiModelOverview,
-      aiCommonIssues: summaryRes.ok ? summaryData.aiCommonIssues : car.aiCommonIssues,
-      aiValueAssessment: summaryRes.ok ? summaryData.aiValueAssessment : car.aiValueAssessment,
+    const result = await refreshCar(car, setRefreshStep)
+    if (result.status === "error") {
+      setRefreshError(result.error)
+      setRefreshStep("error")
+      return
     }
-
-    await updateCarData(car.id, refreshed)
-    const updatedCar: CarRecord = { ...refreshed, id: car.id, status: car.status, createdAt: car.createdAt }
-    onRefresh(updatedCar)
+    onRefresh(result.car)
     setRefreshStep("idle")
   }
 
