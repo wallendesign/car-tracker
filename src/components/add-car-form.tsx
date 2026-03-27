@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { saveCar, updateCarAISummary } from "@/lib/db"
+import { saveCar, updateCarAISummary, getCarByUrl } from "@/lib/db"
 import type { CarRecord } from "@/types/car"
 
 interface AddCarFormProps {
@@ -18,16 +18,40 @@ const STEP_LABEL: Record<Step, string | null> = {
   error: null,
 }
 
+function validateCar(data: { year: number; price: number | null; mileage: number | null; horsepower: number | null }): string[] {
+  const warnings: string[] = []
+  const currentYear = new Date().getFullYear()
+  if (data.year < 1950 || data.year > currentYear + 1)
+    warnings.push(`Årsmodell ${data.year} verkar felaktig`)
+  if (data.mileage !== null && data.mileage > 100_000)
+    warnings.push(`Miltal ${data.mileage.toLocaleString("sv-SE")} mil verkar ovanligt högt`)
+  if (data.price !== null && data.price < 1_000)
+    warnings.push(`Pris ${data.price.toLocaleString("sv-SE")} kr verkar ovanligt lågt`)
+  if (data.horsepower !== null && (data.horsepower < 10 || data.horsepower > 2_000))
+    warnings.push(`Effekt ${data.horsepower} hk verkar felaktig`)
+  return warnings
+}
+
 export function AddCarForm({ onAdd }: AddCarFormProps) {
   const [url, setUrl] = useState("")
   const [step, setStep] = useState<Step>("idle")
   const [error, setError] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!url.trim()) return
 
     setError(null)
+    setWarnings([])
+
+    // Duplicate check
+    const existing = await getCarByUrl(url.trim())
+    if (existing) {
+      setError(`${existing.year} ${existing.make} ${existing.model} finns redan i listan`)
+      return
+    }
+
     setStep("fetching")
 
     const fetchRes = await fetch("/api/fetch-listing", {
@@ -47,6 +71,15 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
     })
     const analyzeData = await analyzeRes.json()
     if (!analyzeRes.ok) { setError(analyzeData.error); setStep("error"); return }
+
+    // Validation warnings (soft — car still saves)
+    const w = validateCar({
+      year: analyzeData.year,
+      price: analyzeData.price,
+      mileage: analyzeData.mileage,
+      horsepower: analyzeData.horsepower,
+    })
+    if (w.length > 0) setWarnings(w)
 
     const car: Omit<CarRecord, "id"> = {
       listingUrl: url.trim(),
@@ -116,6 +149,9 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
       />
       {label && <p className="text-xs text-muted-foreground">{label}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
+      {warnings.map((w, i) => (
+        <p key={i} className="text-xs text-amber-600 dark:text-amber-400">{w}</p>
+      ))}
     </form>
   )
 }

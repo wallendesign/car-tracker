@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { updateCarStatus, deleteCar, updateCarAISummary } from "@/lib/db"
+import { updateCarStatus, deleteCar, updateCarAISummary, updateCarData } from "@/lib/db"
 import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
 
@@ -16,10 +16,8 @@ function parseSummaryField(text: string): { intro: string; bullets: string[] } {
     if (!line) continue
 
     if (/^[•\-\*]/.test(line)) {
-      // Whole line is a bullet
       bullets.push(line.replace(/^[•\-\*]\s*/, ""))
     } else if (line.includes("•")) {
-      // Inline bullets: "Intro sentence. • point 1 • point 2"
       const parts = line.split("•").map((p) => p.trim()).filter(Boolean)
       if (parts[0] && !/^[•\-\*]/.test(parts[0])) introLines.push(parts[0])
       bullets.push(...parts.slice(1))
@@ -83,13 +81,59 @@ interface CarPanelProps {
   onDelete: (id: number) => void
   onRefresh: (car: CarRecord) => void
   onSummaryGenerated: (id: number, fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">) => void
+  onEdit: (car: CarRecord) => void
+  onClose: () => void
 }
 
-export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGenerated }: CarPanelProps) {
+export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGenerated, onEdit, onClose }: CarPanelProps) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [refreshStep, setRefreshStep] = useState<RefreshStep>("idle")
   const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editDraft, setEditDraft] = useState<Partial<CarRecord>>({})
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Reset edit/confirm state when car changes
+  useEffect(() => {
+    setConfirmDelete(false)
+    setIsEditing(false)
+    setEditDraft({})
+  }, [car?.id])
+
+  // Keyboard handler
+  useEffect(() => {
+    if (!car) return
+
+    function handleKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA"
+
+      if ((e.key === "Delete" || e.key === "Backspace") && !inInput) {
+        e.preventDefault()
+        setConfirmDelete(true)
+        return
+      }
+
+      if (e.key === "Escape") {
+        if (confirmDelete) {
+          setConfirmDelete(false)
+          setIsEditing(false)
+          return
+        }
+        if (isEditing) {
+          setIsEditing(false)
+          setEditDraft({})
+          return
+        }
+        onClose()
+      }
+    }
+
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [car, confirmDelete, isEditing, onClose])
 
   if (!car) {
     return (
@@ -164,6 +208,52 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
     onSummaryGenerated(car.id, fields)
   }
 
+  function startEditing() {
+    if (!car) return
+    setEditDraft({
+      make: car.make,
+      model: car.model,
+      year: car.year,
+      price: car.price,
+      mileage: car.mileage,
+      horsepower: car.horsepower,
+      location: car.location,
+    })
+    setIsEditing(true)
+  }
+
+  async function saveEdit() {
+    if (!car?.id) return
+    const updated: CarRecord = { ...car, ...editDraft }
+    await updateCarData(car.id, {
+      listingUrl: updated.listingUrl,
+      marketplace: updated.marketplace,
+      make: updated.make,
+      model: updated.model,
+      year: updated.year,
+      price: updated.price,
+      mileage: updated.mileage,
+      horsepower: updated.horsepower,
+      location: updated.location,
+      photoUrl: updated.photoUrl,
+      bodyType: updated.bodyType,
+      fuelType: updated.fuelType,
+      transmission: updated.transmission,
+      driveType: updated.driveType,
+      engineVolume: updated.engineVolume,
+      color: updated.color,
+      seats: updated.seats,
+      registrationDate: updated.registrationDate,
+      equipment: updated.equipment,
+      aiModelOverview: updated.aiModelOverview,
+      aiCommonIssues: updated.aiCommonIssues,
+      aiValueAssessment: updated.aiValueAssessment,
+    })
+    onEdit(updated)
+    setIsEditing(false)
+    setEditDraft({})
+  }
+
   const fields = [
     car.price != null && { label: "Pris", value: `${car.price.toLocaleString("sv-SE")} kr` },
     car.mileage != null && { label: "Miltal", value: `${car.mileage.toLocaleString("sv-SE")} mil` },
@@ -173,8 +263,10 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
 
   const hasSummary = car.aiModelOverview || car.aiCommonIssues || car.aiValueAssessment
 
+  const inputClass = "w-full bg-muted rounded px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-foreground/30"
+
   return (
-    <div className="flex flex-col gap-6">
+    <div ref={panelRef} className="flex flex-col gap-6">
       {/* Photo */}
       {car.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -191,30 +283,97 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
 
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">
-            {car.year} {car.make} {car.model}
-          </h2>
-          <div className="flex items-center gap-3">
-            <a
-              href={car.listingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-muted-foreground hover:underline"
-            >
-              {car.marketplace} annons ↗
-            </a>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshStep !== "idle" && refreshStep !== "error"}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              {REFRESH_LABEL[refreshStep]}
-            </button>
-          </div>
-          {refreshError && <p className="text-xs text-destructive mt-1">{refreshError}</p>}
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="flex flex-col gap-2 mr-2">
+              <div className="flex gap-2">
+                <input
+                  className={inputClass}
+                  value={editDraft.make ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, make: e.target.value }))}
+                  placeholder="Märke"
+                />
+                <input
+                  className={inputClass}
+                  value={editDraft.model ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, model: e.target.value }))}
+                  placeholder="Modell"
+                />
+                <input
+                  className={`${inputClass} w-20`}
+                  type="number"
+                  value={editDraft.year ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, year: Number(e.target.value) }))}
+                  placeholder="År"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={editDraft.price ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value ? Number(e.target.value) : null }))}
+                  placeholder="Pris (kr)"
+                />
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={editDraft.mileage ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, mileage: e.target.value ? Number(e.target.value) : null }))}
+                  placeholder="Miltal (mil)"
+                />
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={editDraft.horsepower ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, horsepower: e.target.value ? Number(e.target.value) : null }))}
+                  placeholder="HK"
+                />
+              </div>
+              <input
+                className={inputClass}
+                value={editDraft.location ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, location: e.target.value || null }))}
+                placeholder="Ort"
+              />
+              <div className="flex gap-3">
+                <button onClick={saveEdit} className="text-xs text-foreground hover:underline font-medium">Spara</button>
+                <button onClick={() => { setIsEditing(false); setEditDraft({}) }} className="text-xs text-muted-foreground hover:text-foreground">Avbryt</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold">
+                {car.year} {car.make} {car.model}
+              </h2>
+              <div className="flex items-center gap-3">
+                <a
+                  href={car.listingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:underline"
+                >
+                  {car.marketplace} annons ↗
+                </a>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshStep !== "idle" && refreshStep !== "error"}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  {REFRESH_LABEL[refreshStep]}
+                </button>
+                <button
+                  onClick={startEditing}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Redigera
+                </button>
+              </div>
+              {refreshError && <p className="text-xs text-destructive mt-1">{refreshError}</p>}
+            </>
+          )}
         </div>
-        <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>
+        {!isEditing && <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>}
       </div>
 
       <Separator />
@@ -332,12 +491,20 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
       <Separator />
 
       {/* Delete */}
-      <button
-        onClick={handleDelete}
-        className="text-xs text-muted-foreground hover:text-destructive transition-colors text-left"
-      >
-        Ta bort bil
-      </button>
+      {confirmDelete ? (
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-destructive">Är du säker?</span>
+          <button onClick={handleDelete} className="text-xs text-destructive hover:underline">Ta bort</button>
+          <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted-foreground hover:text-foreground">Avbryt</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="text-xs text-muted-foreground hover:text-destructive transition-colors text-left"
+        >
+          Ta bort bil
+        </button>
+      )}
     </div>
   )
 }

@@ -106,8 +106,13 @@ export async function POST(req: NextRequest) {
     })
     httpStatus = res.status
     html = await res.text()
-  } catch {
-    return NextResponse.json({ error: "Could not fetch listing" }, { status: 502 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : ""
+    if (msg.includes("ENOTFOUND") || msg.includes("ECONNREFUSED"))
+      return NextResponse.json({ error: "Kunde inte nå webbplatsen" }, { status: 502 })
+    if (msg.includes("timeout") || msg.includes("ETIMEDOUT"))
+      return NextResponse.json({ error: "Hämtningen tog för lång tid — försök igen" }, { status: 504 })
+    return NextResponse.json({ error: "Kunde inte hämta annonsen" }, { status: 502 })
   }
 
   // Detect bot/CAPTCHA pages

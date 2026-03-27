@@ -51,6 +51,11 @@ export function AppShell() {
     setSelected((prev) => (prev?.id === id ? { ...prev, ...fields } : prev))
   }
 
+  function handleEdit(car: CarRecord) {
+    setCars((prev) => prev.map((c) => (c.id === car.id ? car : c)))
+    setSelected((prev) => (prev?.id === car.id ? car : prev))
+  }
+
   async function handleRefreshAll() {
     const snapshot = [...cars]
     setRefreshingAll(true)
@@ -110,6 +115,8 @@ export function AppShell() {
             onDelete={handleDelete}
             onRefresh={handleRefresh}
             onSummaryGenerated={handleSummaryGenerated}
+            onEdit={handleEdit}
+            onClose={() => setSelected(null)}
           />
         </main>
       </div>

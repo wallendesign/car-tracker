@@ -44,6 +44,12 @@ Varje fält ska följa exakt detta format: en kort inledning, sedan punkter som 
     return NextResponse.json(object)
   } catch (err) {
     console.error("Summary generation error:", err)
-    return NextResponse.json({ error: "Failed to generate summary" }, { status: 500 })
+    const msg = err instanceof Error ? err.message.toLowerCase() : ""
+    const status = (err as Record<string, unknown>)?.status
+    if (status === 429 || msg.includes("rate") || msg.includes("limit"))
+      return NextResponse.json({ error: "AI-tjänsten är tillfälligt överbelastad — försök igen om en stund" }, { status: 429 })
+    if (msg.includes("timeout") || msg.includes("timed out"))
+      return NextResponse.json({ error: "AI-analysen tog för lång tid — försök igen" }, { status: 504 })
+    return NextResponse.json({ error: "Sammanfattning misslyckades" }, { status: 500 })
   }
 }

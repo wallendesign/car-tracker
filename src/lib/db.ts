@@ -54,3 +54,7 @@ export async function updateCarData(
 export async function deleteCar(id: number): Promise<void> {
   await db.cars.delete(id)
 }
+
+export async function getCarByUrl(url: string): Promise<CarRecord | undefined> {
+  return db.cars.filter((c) => c.listingUrl === url).first()
+}

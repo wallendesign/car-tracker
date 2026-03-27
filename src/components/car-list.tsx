@@ -78,10 +78,18 @@ function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
   return <span className="ml-1">{dir === "asc" ? "↑" : "↓"}</span>
 }
 
+const rangeInputClass =
+  "w-20 bg-transparent border border-border rounded px-2 py-0.5 text-xs outline-none focus:border-foreground/40 placeholder:text-muted-foreground/50 tabular-nums"
+
 export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   const [sortCol, setSortCol] = useState<SortCol | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [statusFilter, setStatusFilter] = useState<CarStatus | "all">("all")
+  const [search, setSearch] = useState("")
+  const [yearMin, setYearMin] = useState<number | "">("")
+  const [yearMax, setYearMax] = useState<number | "">("")
+  const [priceMin, setPriceMin] = useState<number | "">("")
+  const [priceMax, setPriceMax] = useState<number | "">("")
 
   function handleSortClick(col: SortCol) {
     if (sortCol === col) {
@@ -94,6 +102,21 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
 
   const displayed = useMemo(() => {
     let result = statusFilter === "all" ? cars : cars.filter((c) => c.status === statusFilter)
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(
+        (c) =>
+          c.make.toLowerCase().includes(q) ||
+          c.model.toLowerCase().includes(q) ||
+          `${c.make} ${c.model}`.toLowerCase().includes(q)
+      )
+    }
+
+    if (yearMin !== "") result = result.filter((c) => c.year >= (yearMin as number))
+    if (yearMax !== "") result = result.filter((c) => c.year <= (yearMax as number))
+    if (priceMin !== "") result = result.filter((c) => c.price != null && c.price >= (priceMin as number))
+    if (priceMax !== "") result = result.filter((c) => c.price != null && c.price <= (priceMax as number))
 
     if (sortCol) {
       result = [...result].sort((a, b) => {
@@ -118,7 +141,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
     }
 
     return result
-  }, [cars, sortCol, sortDir, statusFilter])
+  }, [cars, sortCol, sortDir, statusFilter, search, yearMin, yearMax, priceMin, priceMax])
 
   function thProps(col: SortCol, align: "left" | "right" = "right") {
     return {
@@ -130,7 +153,54 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   return (
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
-        {/* Filter bar */}
+        {/* Search + range filters */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border flex-wrap">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Sök märke eller modell..."
+            className="flex-1 min-w-32 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
+          />
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>År</span>
+            <input
+              type="number"
+              value={yearMin}
+              onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")}
+              placeholder="från"
+              className={rangeInputClass}
+            />
+            <span>–</span>
+            <input
+              type="number"
+              value={yearMax}
+              onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")}
+              placeholder="till"
+              className={rangeInputClass}
+            />
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Pris</span>
+            <input
+              type="number"
+              value={priceMin}
+              onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")}
+              placeholder="från"
+              className={rangeInputClass}
+            />
+            <span>–</span>
+            <input
+              type="number"
+              value={priceMax}
+              onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")}
+              placeholder="till kr"
+              className={`${rangeInputClass} w-24`}
+            />
+          </div>
+        </div>
+
+        {/* Status filter bar */}
         <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
           {(["all", "interested", "contacted", "pass", "sold"] as const).map((s) => (
             <button
