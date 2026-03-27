@@ -115,105 +115,97 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="flex h-10 shrink-0 items-center border-b border-border px-4 gap-3">
-        <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
+    <div
+      className="h-screen overflow-hidden grid bg-background text-foreground"
+      style={
+        isMobile
+          ? { gridTemplateColumns: "1fr 0fr" }
+          : {
+              gridTemplateColumns: selected ? "2fr 1fr" : "1fr 0fr",
+              transition: "grid-template-columns 300ms ease-in-out",
+            }
+      }
+    >
+      {/* Left column: header + list */}
+      <div className={`min-w-0 flex flex-col overflow-hidden ${!isMobile && selected ? "border-r border-border" : ""}`}>
+        <header className="flex h-10 shrink-0 items-center border-b border-border px-4 gap-3">
+          <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
 
-        <div className="ml-auto flex items-center gap-2">
-          {(refreshingAll || checkingStatus) && (
-            <span className="text-xs text-muted-foreground">
-              {refreshingAll
-                ? `Uppdaterar ${refreshProgress.current}/${refreshProgress.total}...`
-                : `Kollar ${checkProgress.current}/${checkProgress.total}...`}
-            </span>
-          )}
-
-          <button
-            onClick={() => setAddCarOpen(true)}
-            className="text-xs px-3 py-1 rounded bg-foreground text-background hover:opacity-80 transition-opacity font-medium"
-          >
-            Lägg till
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen(v => !v)}
-              className="text-muted-foreground hover:text-foreground transition-colors px-1 text-lg leading-none"
-              aria-label="Meny"
-            >
-              ···
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-40 w-48 rounded-md border border-border bg-background shadow-md py-1 text-sm">
-                  <button
-                    onClick={() => { setMenuOpen(false); handleRefreshAll() }}
-                    disabled={cars.length === 0 || refreshingAll || checkingStatus}
-                    className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Uppdatera alla
-                  </button>
-                  <button
-                    onClick={handleCheckSoldStatus}
-                    disabled={cars.length === 0 || refreshingAll || checkingStatus}
-                    className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Uppdatera status
-                  </button>
-                  <div className="my-1 border-t border-border" />
-                  <button
-                    onClick={() => { setMenuOpen(false); setTheme(resolvedTheme === "dark" ? "light" : "dark") }}
-                    className="w-full text-left px-4 py-2 hover:bg-accent transition-colors text-muted-foreground"
-                  >
-                    {resolvedTheme === "dark" ? "☀ Ljust läge" : "☾ Mörkt läge"}
-                  </button>
-                </div>
-              </>
+          <div className="ml-auto flex items-center gap-2">
+            {(refreshingAll || checkingStatus) && (
+              <span className="text-xs text-muted-foreground">
+                {refreshingAll
+                  ? `Uppdaterar ${refreshProgress.current}/${refreshProgress.total}...`
+                  : `Kollar ${checkProgress.current}/${checkProgress.total}...`}
+              </span>
             )}
+
+            <button
+              onClick={() => setAddCarOpen(true)}
+              className="text-xs px-3 py-1 rounded bg-foreground text-background hover:opacity-80 transition-opacity font-medium"
+            >
+              Lägg till
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                className="text-muted-foreground hover:text-foreground transition-colors px-1 text-lg leading-none"
+                aria-label="Meny"
+              >
+                ···
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-1 z-40 w-48 rounded-md border border-border bg-background shadow-md py-1 text-sm">
+                    <button
+                      onClick={() => { setMenuOpen(false); handleRefreshAll() }}
+                      disabled={cars.length === 0 || refreshingAll || checkingStatus}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Uppdatera alla
+                    </button>
+                    <button
+                      onClick={handleCheckSoldStatus}
+                      disabled={cars.length === 0 || refreshingAll || checkingStatus}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Uppdatera status
+                    </button>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      onClick={() => { setMenuOpen(false); setTheme(resolvedTheme === "dark" ? "light" : "dark") }}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors text-muted-foreground"
+                    >
+                      {resolvedTheme === "dark" ? "☀ Ljust läge" : "☾ Mörkt läge"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto">
+          <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
         </div>
+      </div>
 
-        {/* Spacer that mirrors the panel width so header content stays left-aligned */}
-        <div
-          className="shrink-0 overflow-hidden transition-[width] duration-300"
-          style={{ width: !isMobile && selected ? "calc(100% / 3)" : 0 }}
-        />
-      </header>
-
-      <div
-        className="flex-1 overflow-hidden grid"
-        style={
-          isMobile
-            ? { gridTemplateColumns: "1fr 0fr" }
-            : {
-                gridTemplateColumns: selected ? "2fr 1fr" : "1fr 0fr",
-                transition: "grid-template-columns 300ms ease-in-out",
-              }
-        }
-      >
-        {/* Car table — expands to full width when no selection */}
-        <div className={`min-w-0 flex flex-col overflow-hidden ${!isMobile && selected ? "border-r border-border" : ""}`}>
-          <div className="flex-1 overflow-y-auto">
-            <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
-          </div>
-        </div>
-
-        {/* Detail panel — slides in from the right (desktop only) */}
-        <div className="hidden md:block overflow-hidden" style={{ minWidth: 0 }}>
-          <div className="h-full overflow-y-auto">
-            <CarPanel
-              car={selected}
-              allCars={cars}
-              showHeader={true}
-              onStatusChange={handleStatusChange}
-              onDelete={handleDelete}
-              onRefresh={handleRefresh}
-              onSummaryGenerated={handleSummaryGenerated}
-              onEdit={handleEdit}
-              onClose={() => setSelected(null)}
-            />
-          </div>
+      {/* Right column: panel — full screen height */}
+      <div className="hidden md:block overflow-hidden" style={{ minWidth: 0 }}>
+        <div className="h-full overflow-y-auto">
+          <CarPanel
+            car={selected}
+            allCars={cars}
+            showHeader={true}
+            onStatusChange={handleStatusChange}
+            onDelete={handleDelete}
+            onRefresh={handleRefresh}
+            onSummaryGenerated={handleSummaryGenerated}
+            onEdit={handleEdit}
+            onClose={() => setSelected(null)}
+          />
         </div>
       </div>
 
