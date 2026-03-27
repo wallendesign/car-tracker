@@ -220,7 +220,7 @@ export function AppShell() {
       {addCarOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setAddCarOpen(false)} />
-          <div className="fixed inset-x-4 top-14 z-50 rounded-xl border border-border bg-background shadow-lg sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2">
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4 rounded-xl border border-border bg-background shadow-lg" style={{ width: "min(calc(100vw - 2rem), 28rem)" }}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="text-sm font-medium">Lägg till bil</span>
               <button

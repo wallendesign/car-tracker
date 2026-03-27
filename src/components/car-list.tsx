@@ -90,6 +90,10 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   const [yearMax, setYearMax] = useState<number | "">("")
   const [priceMin, setPriceMin] = useState<number | "">("")
   const [priceMax, setPriceMax] = useState<number | "">("")
+  const [hpMin, setHpMin] = useState<number | "">("")
+  const [hpMax, setHpMax] = useState<number | "">("")
+  const [mileageMin, setMileageMin] = useState<number | "">("")
+  const [mileageMax, setMileageMax] = useState<number | "">("")
   const [searchOpen, setSearchOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -124,6 +128,10 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
     if (yearMax !== "") result = result.filter((c) => c.year <= (yearMax as number))
     if (priceMin !== "") result = result.filter((c) => c.price != null && c.price >= (priceMin as number))
     if (priceMax !== "") result = result.filter((c) => c.price != null && c.price <= (priceMax as number))
+    if (hpMin !== "") result = result.filter((c) => c.horsepower != null && c.horsepower >= (hpMin as number))
+    if (hpMax !== "") result = result.filter((c) => c.horsepower != null && c.horsepower <= (hpMax as number))
+    if (mileageMin !== "") result = result.filter((c) => c.mileage != null && c.mileage >= (mileageMin as number))
+    if (mileageMax !== "") result = result.filter((c) => c.mileage != null && c.mileage <= (mileageMax as number))
 
     if (sortCol) {
       result = [...result].sort((a, b) => {
@@ -148,7 +156,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
     }
 
     return result
-  }, [cars, sortCol, sortDir, statusFilter, search, yearMin, yearMax, priceMin, priceMax])
+  }, [cars, sortCol, sortDir, statusFilter, search, yearMin, yearMax, priceMin, priceMax, hpMin, hpMax, mileageMin, mileageMax])
 
   function thProps(col: SortCol, align: "left" | "right" = "right") {
     return {
@@ -160,72 +168,19 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   return (
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
-        {/* Search + Filtrera */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-          {searchOpen ? (
-            <div className="flex flex-1 items-center gap-1.5">
-              <input
-                ref={searchRef}
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Sök märke eller modell..."
-                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
-              />
-              <button
-                onClick={() => { setSearch(""); setSearchOpen(false) }}
-                className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none"
-              >✕</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Sök"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-            </button>
-          )}
+        {/* Toolbar: count · status pills · search · filtrera */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border overflow-x-auto">
+          {/* Count */}
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+            {displayed.length} bil{displayed.length !== 1 ? "ar" : ""}
+          </span>
 
-          <button
-            onClick={() => setFiltersOpen(v => !v)}
-            className={`ml-auto text-xs px-2.5 py-0.5 rounded-full transition-colors ${
-              filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== ""
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            Filtrera
-          </button>
-        </div>
-
-        {/* Collapsible range filters */}
-        {filtersOpen && (
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border flex-wrap">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>År</span>
-              <input type="number" value={yearMin} onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
-              <span>–</span>
-              <input type="number" value={yearMax} onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>Pris</span>
-              <input type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
-              <span>–</span>
-              <input type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")} placeholder="till kr" className={`${rangeInputClass} w-24`} />
-            </div>
-          </div>
-        )}
-
-        {/* Status filter bar */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+          {/* Status pills */}
           {(["all", "interested", "contacted", "pass", "sold"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
                 statusFilter === s
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -234,9 +189,86 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
               {s === "all" ? "Alla" : STATUS_LABEL[s]}
             </button>
           ))}
-          <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-            {displayed.length} bil{displayed.length !== 1 ? "ar" : ""}
-          </span>
+
+          {/* Search */}
+          <div className="ml-auto shrink-0 flex items-center">
+            {searchOpen ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={searchRef}
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Sök märke eller modell..."
+                  className="w-40 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
+                />
+                <button
+                  onClick={() => { setSearch(""); setSearchOpen(false) }}
+                  className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none"
+                >✕</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs"
+                aria-label="Sök"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                Sök
+              </button>
+            )}
+          </div>
+
+          {/* Filtrera dropdown */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setFiltersOpen(v => !v)}
+              className={`text-xs px-2.5 py-0.5 rounded-full transition-colors ${
+                filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== ""
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              Filtrera
+            </button>
+            {filtersOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setFiltersOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-40 w-64 rounded-md border border-border bg-background shadow-md p-3 flex flex-col gap-3">
+                  {/* År */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="w-12 shrink-0">År</span>
+                    <input type="number" value={yearMin} onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                    <span>–</span>
+                    <input type="number" value={yearMax} onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                  </div>
+                  {/* Pris */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="w-12 shrink-0">Pris</span>
+                    <input type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                    <span>–</span>
+                    <input type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                  </div>
+                  {/* Hästkrafter */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="w-12 shrink-0">HK</span>
+                    <input type="number" value={hpMin} onChange={(e) => setHpMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                    <span>–</span>
+                    <input type="number" value={hpMax} onChange={(e) => setHpMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                  </div>
+                  {/* Miltal */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="w-12 shrink-0">Miltal</span>
+                    <input type="number" value={mileageMin} onChange={(e) => setMileageMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                    <span>–</span>
+                    <input type="number" value={mileageMax} onChange={(e) => setMileageMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {displayed.length === 0 ? (

@@ -147,6 +147,7 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
         onChange={(e) => setUrl(e.target.value)}
         placeholder="Klistra in Blocket, Bytbil eller AutoUncle-länk..."
         disabled={step !== "idle" && step !== "error"}
+        autoFocus
         className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
       />
       {label && <p className="text-xs text-muted-foreground">{label}</p>}
