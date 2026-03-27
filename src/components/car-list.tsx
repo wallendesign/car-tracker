@@ -189,19 +189,31 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
         {/* Toolbar: status pills · search · filtrera */}
         <div className="flex h-10 shrink-0 items-center gap-1 px-3 border-b border-border overflow-x-auto">
           {/* Status pills with counts */}
-          {(["all", "interested", "contacted", "test_driven", "pass", "sold"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`shrink-0 rounded-full px-2 py-0.5 text-xs transition-colors whitespace-nowrap ${
-                statusFilter === s
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-            >
-              {s === "all" ? `Alla (${statusCounts.all ?? 0})` : `${STATUS_LABEL[s]} (${statusCounts[s] ?? 0})`}
-            </button>
-          ))}
+          {(["all", "contacted", "test_driven", "pass", "sold"] as const).map((s) => {
+            const count = s === "all" ? (statusCounts.all ?? 0) : (statusCounts[s] ?? 0)
+            const label = s === "all" ? "Alla bilar" : STATUS_LABEL[s]
+            const active = statusFilter === s
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`shrink-0 flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-0.5 text-xs transition-colors whitespace-nowrap ${
+                  active
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                {label}
+                <span className={`inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-medium tabular-nums ${
+                  active
+                    ? "bg-background/20 text-background"
+                    : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
 
           {/* Search */}
           <div className="ml-auto shrink-0 flex items-center">
