@@ -9,12 +9,25 @@ import { getAllCars } from "@/lib/db"
 import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+  return isMobile
+}
+
 export function AppShell() {
   const { resolvedTheme, setTheme } = useTheme()
   const [cars, setCars] = useState<CarRecord[]>([])
   const [selected, setSelected] = useState<CarRecord | null>(null)
   const [refreshingAll, setRefreshingAll] = useState(false)
   const [refreshProgress, setRefreshProgress] = useState({ current: 0, total: 0 })
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     getAllCars().then(setCars)
@@ -100,21 +113,25 @@ export function AppShell() {
 
       <div
         className="flex-1 overflow-hidden grid"
-        style={{
-          gridTemplateColumns: selected ? "2fr 1fr" : "1fr 0fr",
-          transition: "grid-template-columns 300ms ease-in-out",
-        }}
+        style={
+          isMobile
+            ? { gridTemplateColumns: "1fr 0fr" }
+            : {
+                gridTemplateColumns: selected ? "2fr 1fr" : "1fr 0fr",
+                transition: "grid-template-columns 300ms ease-in-out",
+              }
+        }
       >
         {/* Car table — expands to full width when no selection */}
-        <div className={`min-w-0 flex flex-col overflow-hidden ${selected ? "border-r border-border" : ""}`}>
+        <div className={`min-w-0 flex flex-col overflow-hidden ${!isMobile && selected ? "border-r border-border" : ""}`}>
           <AddCarForm onAdd={handleAdd} />
           <div className="flex-1 overflow-y-auto">
             <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
           </div>
         </div>
 
-        {/* Detail panel — slides in from the right */}
-        <div className="overflow-hidden" style={{ minWidth: 0 }}>
+        {/* Detail panel — slides in from the right (desktop only) */}
+        <div className="hidden md:block overflow-hidden" style={{ minWidth: 0 }}>
           <main className="relative h-full overflow-y-auto p-6">
             <button
               onClick={() => setSelected(null)}
@@ -135,6 +152,52 @@ export function AppShell() {
           </main>
         </div>
       </div>
+
+      {/* Mobile bottom sheet */}
+      {isMobile && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setSelected(null)}
+            className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${
+              selected ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            }`}
+          />
+          {/* Sheet */}
+          <div
+            className={`fixed inset-x-0 bottom-0 z-50 h-[85svh] bg-background border-t border-border rounded-t-xl flex flex-col transition-transform duration-300 ease-in-out ${
+              selected ? "translate-y-0" : "translate-y-full"
+            }`}
+          >
+            {/* Header */}
+            <div className="relative flex items-center px-4 py-3 shrink-0 border-b border-border">
+              <div className="absolute left-1/2 -translate-x-1/2 top-2 w-8 h-1 rounded-full bg-border" />
+              <span className="text-sm font-medium truncate pr-8">
+                {selected ? `${selected.year} ${selected.make} ${selected.model}` : ""}
+              </span>
+              <button
+                onClick={() => setSelected(null)}
+                className="absolute right-4 text-muted-foreground hover:text-foreground transition-colors leading-none"
+                aria-label="Stäng"
+              >
+                ✕
+              </button>
+            </div>
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <CarPanel
+                car={selected}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+                onRefresh={handleRefresh}
+                onSummaryGenerated={handleSummaryGenerated}
+                onEdit={handleEdit}
+                onClose={() => setSelected(null)}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

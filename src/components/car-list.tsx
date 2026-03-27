@@ -162,7 +162,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
             placeholder="Sök märke eller modell..."
             className="flex-1 min-w-32 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
           />
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
             <span>År</span>
             <input
               type="number"
@@ -180,7 +180,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
               className={rangeInputClass}
             />
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
             <span>Pris</span>
             <input
               type="number"
@@ -234,10 +234,10 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                 <th {...thProps("model", "left")}>
                   Modell <SortIndicator active={sortCol === "model"} dir={sortDir} />
                 </th>
-                <th {...thProps("year")}>
+                <th onClick={() => handleSortClick("year")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   År <SortIndicator active={sortCol === "year"} dir={sortDir} />
                 </th>
-                <th {...thProps("hp")}>
+                <th onClick={() => handleSortClick("hp")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   HK <SortIndicator active={sortCol === "hp"} dir={sortDir} />
                 </th>
                 <th {...thProps("mileage")}>
@@ -246,7 +246,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                 <th {...thProps("price")}>
                   Pris <SortIndicator active={sortCol === "price"} dir={sortDir} />
                 </th>
-                <th className="py-2 px-3 font-normal text-left">Status</th>
+                <th className="hidden md:table-cell py-2 px-3 font-normal text-left">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -279,19 +279,27 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     </td>
 
                     {/* Make + Model */}
-                    <td className="py-2 px-3 font-medium whitespace-nowrap">
-                      {car.make} {car.model}
+                    <td className="py-2 px-3 font-medium">
+                      <div className="whitespace-nowrap">{car.make} {car.model}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 md:hidden">
+                        {yearGrade
+                          ? <GradePill grade={yearGrade} value={String(car.year)} />
+                          : <span className="text-muted-foreground text-[11px] tabular-nums">{car.year ?? "—"}</span>}
+                        {hpGrade
+                          ? <GradePill grade={hpGrade} value={`${car.horsepower} hk`} />
+                          : <span className="text-muted-foreground text-[11px]">—</span>}
+                      </div>
                     </td>
 
                     {/* Year */}
-                    <td className="py-2 px-3 text-right">
+                    <td className="hidden md:table-cell py-2 px-3 text-right">
                       {yearGrade
                         ? <GradePill grade={yearGrade} value={String(car.year)} />
                         : <span className="text-muted-foreground tabular-nums">{car.year ?? "—"}</span>}
                     </td>
 
                     {/* Horsepower */}
-                    <td className="py-2 px-3 text-right">
+                    <td className="hidden md:table-cell py-2 px-3 text-right">
                       {hpGrade
                         ? <GradePill grade={hpGrade} value={`${car.horsepower} hk`} />
                         : <span className="text-muted-foreground">—</span>}
@@ -312,7 +320,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     </td>
 
                     {/* Status */}
-                    <td className="py-2 px-3">
+                    <td className="hidden md:table-cell py-2 px-3">
                       {car.status !== "interested" && (
                         <Badge
                           variant={STATUS_VARIANT[car.status]}

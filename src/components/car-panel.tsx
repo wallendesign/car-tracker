@@ -286,7 +286,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
         <div className="flex-1 min-w-0">
           {isEditing ? (
             <div className="flex flex-col gap-2 mr-2">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   className={inputClass}
                   value={editDraft.make ?? ""}
@@ -300,14 +300,14 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
                   placeholder="Modell"
                 />
                 <input
-                  className={`${inputClass} w-20`}
+                  className={`${inputClass} sm:w-20`}
                   type="number"
                   value={editDraft.year ?? ""}
                   onChange={(e) => setEditDraft((d) => ({ ...d, year: Number(e.target.value) }))}
                   placeholder="År"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   className={inputClass}
                   type="number"
@@ -393,7 +393,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
       {/* Status */}
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Statusändring</span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {STATUSES.map((s) => (
             <button
               key={s}
