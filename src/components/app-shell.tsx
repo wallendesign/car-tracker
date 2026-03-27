@@ -98,27 +98,42 @@ export function AppShell() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Car table — 2/3 width */}
-        <div className="flex w-2/3 shrink-0 flex-col border-r border-border">
+      <div
+        className="flex-1 overflow-hidden grid"
+        style={{
+          gridTemplateColumns: selected ? "2fr 1fr" : "1fr 0fr",
+          transition: "grid-template-columns 300ms ease-in-out",
+        }}
+      >
+        {/* Car table — expands to full width when no selection */}
+        <div className={`min-w-0 flex flex-col overflow-hidden ${selected ? "border-r border-border" : ""}`}>
           <AddCarForm onAdd={handleAdd} />
           <div className="flex-1 overflow-y-auto">
             <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
           </div>
         </div>
 
-        {/* Detail panel — 1/3 width */}
-        <main className="w-1/3 overflow-y-auto p-6">
-          <CarPanel
-            car={selected}
-            onStatusChange={handleStatusChange}
-            onDelete={handleDelete}
-            onRefresh={handleRefresh}
-            onSummaryGenerated={handleSummaryGenerated}
-            onEdit={handleEdit}
-            onClose={() => setSelected(null)}
-          />
-        </main>
+        {/* Detail panel — slides in from the right */}
+        <div className="overflow-hidden" style={{ minWidth: 0 }}>
+          <main className="relative h-full overflow-y-auto p-6">
+            <button
+              onClick={() => setSelected(null)}
+              className="absolute top-3 right-4 text-base text-muted-foreground hover:text-foreground transition-colors leading-none"
+              aria-label="Stäng panel"
+            >
+              ✕
+            </button>
+            <CarPanel
+              car={selected}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+              onRefresh={handleRefresh}
+              onSummaryGenerated={handleSummaryGenerated}
+              onEdit={handleEdit}
+              onClose={() => setSelected(null)}
+            />
+          </main>
+        </div>
       </div>
     </div>
   )
