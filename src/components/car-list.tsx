@@ -233,54 +233,52 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
           </div>
 
           {/* Filtrera dropdown */}
-          <div className="shrink-0">
-            <button
-              ref={filterBtnRef}
-              onClick={() => filtersOpen ? setFiltersOpen(false) : openFilters()}
-              className={`text-xs px-2.5 py-0.5 rounded-full transition-colors ${
-                filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== ""
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-            >
-              Filtrera
-            </button>
-            {filtersOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setFiltersOpen(false)} />
-                <div className="fixed z-50 w-64 rounded-md border border-border bg-background shadow-md p-3 flex flex-col gap-3" style={{ top: filterPos.top, right: filterPos.right }}>
-                  {/* År */}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">År</span>
-                    <input type="number" value={yearMin} onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
-                    <span>–</span>
-                    <input type="number" value={yearMax} onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
-                  </div>
-                  {/* Pris */}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">Pris</span>
-                    <input type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
-                    <span>–</span>
-                    <input type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
-                  </div>
-                  {/* Hästkrafter */}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">HK</span>
-                    <input type="number" value={hpMin} onChange={(e) => setHpMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
-                    <span>–</span>
-                    <input type="number" value={hpMax} onChange={(e) => setHpMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
-                  </div>
-                  {/* Miltal */}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">Miltal</span>
-                    <input type="number" value={mileageMin} onChange={(e) => setMileageMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
-                    <span>–</span>
-                    <input type="number" value={mileageMax} onChange={(e) => setMileageMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
-                  </div>
+          <button
+            ref={filterBtnRef}
+            onClick={() => filtersOpen ? setFiltersOpen(false) : openFilters()}
+            className={`shrink-0 text-xs px-2.5 py-0.5 rounded-full transition-colors ${
+              filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== ""
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            Filtrera
+          </button>
+          {filtersOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setFiltersOpen(false)} />
+              <div className="fixed z-50 w-64 rounded-md border border-border bg-background shadow-md p-3 flex flex-col gap-3" style={{ top: filterPos.top, right: filterPos.right }}>
+                {/* År */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-12 shrink-0">År</span>
+                  <input type="number" value={yearMin} onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                  <span>–</span>
+                  <input type="number" value={yearMax} onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
                 </div>
-              </>
-            )}
-          </div>
+                {/* Pris */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-12 shrink-0">Pris</span>
+                  <input type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                  <span>–</span>
+                  <input type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                </div>
+                {/* Hästkrafter */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-12 shrink-0">HK</span>
+                  <input type="number" value={hpMin} onChange={(e) => setHpMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                  <span>–</span>
+                  <input type="number" value={hpMax} onChange={(e) => setHpMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                </div>
+                {/* Miltal */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-12 shrink-0">Miltal</span>
+                  <input type="number" value={mileageMin} onChange={(e) => setMileageMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+                  <span>–</span>
+                  <input type="number" value={mileageMax} onChange={(e) => setMileageMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {displayed.length === 0 ? (
