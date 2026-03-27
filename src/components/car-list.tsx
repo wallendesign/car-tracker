@@ -99,18 +99,14 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [filterPos, setFilterPos] = useState({ top: 0, right: 0 })
   const searchRef = useRef<HTMLInputElement>(null)
-  const filterBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus()
   }, [searchOpen])
 
-  function openFilters() {
-    const btn = filterBtnRef.current
-    if (btn) {
-      const rect = btn.getBoundingClientRect()
-      setFilterPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
-    }
+  function openFilters(el: HTMLElement) {
+    const rect = el.getBoundingClientRect()
+    setFilterPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
     setFiltersOpen(true)
   }
 
@@ -186,79 +182,81 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   return (
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
-        {/* Toolbar: status pills · search · filtrera */}
-        <div className="flex h-10 shrink-0 items-center gap-1 px-3 border-b border-border overflow-x-auto">
-          {/* Status pills with counts */}
-          {(["all", "contacted", "test_driven", "pass", "sold"] as const).map((s) => {
-            const count = s === "all" ? (statusCounts.all ?? 0) : (statusCounts[s] ?? 0)
-            const label = s === "all" ? "Alla bilar" : STATUS_LABEL[s]
-            const active = statusFilter === s
-            return (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`shrink-0 flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-0.5 text-xs transition-colors whitespace-nowrap ${
-                  active
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {label}
-                <span className={`inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-medium tabular-nums ${
-                  active
-                    ? "bg-background/20 text-background"
-                    : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400"
-                }`}>
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-
-          {/* Search */}
-          <div className="ml-auto shrink-0 flex items-center">
-            {searchOpen ? (
-              <div className="flex items-center gap-1.5">
-                <input
-                  ref={searchRef}
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Sök märke eller modell..."
-                  className="w-40 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
-                />
+        {/* Toolbar */}
+        <div className="flex flex-col shrink-0 border-b border-border">
+          {/* Row 1: status pills (+ search+filter inline on md+) */}
+          <div className="flex h-10 items-center gap-1 px-3 overflow-x-auto">
+            {(["all", "contacted", "test_driven", "pass", "sold"] as const).map((s) => {
+              const count = s === "all" ? (statusCounts.all ?? 0) : (statusCounts[s] ?? 0)
+              const label = s === "all" ? "Alla bilar" : STATUS_LABEL[s]
+              const active = statusFilter === s
+              return (
                 <button
-                  onClick={() => { setSearch(""); setSearchOpen(false) }}
-                  className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none"
-                >✕</button>
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-0.5 text-xs transition-colors whitespace-nowrap ${
+                    active
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  {label}
+                  <span className={`inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-medium tabular-nums ${
+                    active
+                      ? "bg-background/20 text-background"
+                      : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400"
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+
+            {/* Search + filter inline on desktop */}
+            <div className="ml-auto hidden md:flex items-center gap-1 shrink-0">
+              {searchOpen ? (
+                <div className="flex items-center gap-1.5">
+                  <input ref={searchRef} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök märke eller modell..." className="w-40 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70" />
+                  <button onClick={() => { setSearch(""); setSearchOpen(false) }} className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none">✕</button>
+                </div>
+              ) : (
+                <button onClick={() => setSearchOpen(true)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs px-2.5 py-0.5 rounded-full hover:bg-accent" aria-label="Sök">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  Sök
+                </button>
+              )}
+              <button
+                onClick={(e) => filtersOpen ? setFiltersOpen(false) : openFilters(e.currentTarget)}
+                className={`shrink-0 text-xs px-2.5 py-0.5 rounded-full transition-colors ${filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== "" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+              >
+                Filtrera
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: search + filter on mobile only */}
+          <div className="flex md:hidden h-9 items-center gap-1.5 px-3 border-t border-border">
+            {searchOpen ? (
+              <div className="flex items-center gap-1.5 flex-1">
+                <input ref={searchRef} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök märke eller modell..." className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70" />
+                <button onClick={() => { setSearch(""); setSearchOpen(false) }} className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none">✕</button>
               </div>
             ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs px-2.5 py-0.5 rounded-full hover:bg-accent"
-                aria-label="Sök"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
+              <button onClick={() => setSearchOpen(true)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs px-2.5 py-0.5 rounded-full hover:bg-accent" aria-label="Sök">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 Sök
               </button>
             )}
+            <button
+              onClick={(e) => filtersOpen ? setFiltersOpen(false) : openFilters(e.currentTarget)}
+              className={`ml-auto shrink-0 text-xs px-2.5 py-0.5 rounded-full transition-colors ${filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== "" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+            >
+              Filtrera
+            </button>
           </div>
+        </div>
 
-          {/* Filtrera dropdown */}
-          <button
-            ref={filterBtnRef}
-            onClick={() => filtersOpen ? setFiltersOpen(false) : openFilters()}
-            className={`shrink-0 text-xs px-2.5 py-0.5 rounded-full transition-colors ${
-              filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== ""
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            Filtrera
-          </button>
-          {filtersOpen && (
+        {filtersOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setFiltersOpen(false)} />
               <div className="fixed z-50 w-64 rounded-md border border-border bg-background shadow-md p-3 flex flex-col gap-3" style={{ top: filterPos.top, right: filterPos.right }}>
@@ -293,7 +291,6 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
               </div>
             </>
           )}
-        </div>
 
         {displayed.length === 0 ? (
           <div className="px-4 py-6 text-xs text-muted-foreground">
@@ -322,6 +319,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                   Pris <SortIndicator active={sortCol === "price"} dir={sortDir} />
                 </th>
                 <th className="hidden md:table-cell py-2 px-3 font-normal text-left">Status</th>
+                <th className="py-2 px-2 font-normal w-8" />
               </tr>
             </thead>
             <tbody>
@@ -407,6 +405,21 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                           {STATUS_LABEL[car.status]}
                         </span>
                       )}
+                    </td>
+                    {/* External link */}
+                    <td className="py-2 px-2 text-right">
+                      <a
+                        href={car.listingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        aria-label="Öppna annons"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
+                        </svg>
+                      </a>
                     </td>
                   </tr>
                 )

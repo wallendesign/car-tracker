@@ -488,7 +488,7 @@ export function CarPanel({
                     rel="noopener noreferrer"
                     className="text-sm text-muted-foreground hover:underline"
                   >
-                    {car.marketplace} annons ↗
+                    {car.marketplace.charAt(0).toUpperCase() + car.marketplace.slice(1)} ↗
                   </a>
                   {!showHeader && (
                     <>
