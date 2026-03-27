@@ -6,6 +6,7 @@ import type { CarRecord } from "@/types/car"
 
 interface AddCarFormProps {
   onAdd: (car: CarRecord) => void
+  onClose?: () => void
 }
 
 type Step = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
@@ -32,7 +33,7 @@ function validateCar(data: { year: number; price: number | null; mileage: number
   return warnings
 }
 
-export function AddCarForm({ onAdd }: AddCarFormProps) {
+export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
   const [url, setUrl] = useState("")
   const [step, setStep] = useState<Step>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -111,6 +112,7 @@ export function AddCarForm({ onAdd }: AddCarFormProps) {
     const id = await saveCar(car)
     const savedCar = { ...car, id }
     onAdd(savedCar)
+    onClose?.()
     setUrl("")
     setStep("summarizing")
 

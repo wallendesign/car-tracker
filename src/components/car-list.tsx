@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import { Tooltip } from "radix-ui"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -90,6 +90,13 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   const [yearMax, setYearMax] = useState<number | "">("")
   const [priceMin, setPriceMin] = useState<number | "">("")
   const [priceMax, setPriceMax] = useState<number | "">("")
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus()
+  }, [searchOpen])
 
   function handleSortClick(col: SortCol) {
     if (sortCol === col) {
@@ -153,52 +160,64 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   return (
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
-        {/* Search + range filters */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border flex-wrap">
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Sök märke eller modell..."
-            className="flex-1 min-w-32 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
-          />
-          <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-            <span>År</span>
-            <input
-              type="number"
-              value={yearMin}
-              onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")}
-              placeholder="från"
-              className={rangeInputClass}
-            />
-            <span>–</span>
-            <input
-              type="number"
-              value={yearMax}
-              onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")}
-              placeholder="till"
-              className={rangeInputClass}
-            />
-          </div>
-          <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
-            <span>Pris</span>
-            <input
-              type="number"
-              value={priceMin}
-              onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")}
-              placeholder="från"
-              className={rangeInputClass}
-            />
-            <span>–</span>
-            <input
-              type="number"
-              value={priceMax}
-              onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")}
-              placeholder="till kr"
-              className={`${rangeInputClass} w-24`}
-            />
-          </div>
+        {/* Search + Filtrera */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          {searchOpen ? (
+            <div className="flex flex-1 items-center gap-1.5">
+              <input
+                ref={searchRef}
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Sök märke eller modell..."
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70"
+              />
+              <button
+                onClick={() => { setSearch(""); setSearchOpen(false) }}
+                className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none"
+              >✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Sök"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </button>
+          )}
+
+          <button
+            onClick={() => setFiltersOpen(v => !v)}
+            className={`ml-auto text-xs px-2.5 py-0.5 rounded-full transition-colors ${
+              filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== ""
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            Filtrera
+          </button>
         </div>
+
+        {/* Collapsible range filters */}
+        {filtersOpen && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border flex-wrap">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>År</span>
+              <input type="number" value={yearMin} onChange={(e) => setYearMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+              <span>–</span>
+              <input type="number" value={yearMax} onChange={(e) => setYearMax(e.target.value ? Number(e.target.value) : "")} placeholder="till" className={rangeInputClass} />
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>Pris</span>
+              <input type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : "")} placeholder="från" className={rangeInputClass} />
+              <span>–</span>
+              <input type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : "")} placeholder="till kr" className={`${rangeInputClass} w-24`} />
+            </div>
+          </div>
+        )}
 
         {/* Status filter bar */}
         <div className="flex items-center gap-1 px-3 py-2 border-b border-border">

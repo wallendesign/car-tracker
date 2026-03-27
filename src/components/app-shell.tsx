@@ -5,7 +5,7 @@ import { useTheme } from "next-themes"
 import { AddCarForm } from "@/components/add-car-form"
 import { CarList } from "@/components/car-list"
 import { CarPanel } from "@/components/car-panel"
-import { getAllCars } from "@/lib/db"
+import { getAllCars, updateCarStatus } from "@/lib/db"
 import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
 
@@ -27,6 +27,10 @@ export function AppShell() {
   const [selected, setSelected] = useState<CarRecord | null>(null)
   const [refreshingAll, setRefreshingAll] = useState(false)
   const [refreshProgress, setRefreshProgress] = useState({ current: 0, total: 0 })
+  const [addCarOpen, setAddCarOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(false)
+  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 })
   const isMobile = useIsMobile()
 
   useEffect(() => {
@@ -69,6 +73,32 @@ export function AppShell() {
     setSelected((prev) => (prev?.id === car.id ? car : prev))
   }
 
+  async function handleCheckSoldStatus() {
+    const nonSold = cars.filter(c => c.status !== "sold")
+    if (nonSold.length === 0) return
+    setMenuOpen(false)
+    setCheckingStatus(true)
+    setCheckProgress({ current: 0, total: nonSold.length })
+    for (let i = 0; i < nonSold.length; i++) {
+      setCheckProgress({ current: i + 1, total: nonSold.length })
+      const car = nonSold[i]
+      try {
+        const res = await fetch("/api/fetch-listing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: car.listingUrl }),
+        })
+        const data = await res.json()
+        if (res.ok && data.isSold) {
+          await updateCarStatus(car.id!, "sold")
+          setCars(prev => prev.map(c => c.id === car.id ? { ...c, status: "sold" } : c))
+          setSelected(prev => prev?.id === car.id ? { ...prev, status: "sold" } : prev)
+        }
+      } catch { /* skip */ }
+    }
+    setCheckingStatus(false)
+  }
+
   async function handleRefreshAll() {
     const snapshot = [...cars]
     setRefreshingAll(true)
@@ -86,28 +116,62 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
+      <header className="flex h-10 shrink-0 items-center border-b border-border px-4 gap-3">
         <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
-        <div className="ml-auto flex items-center gap-4">
-          <button
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {resolvedTheme === "dark" ? "☀ Ljust" : "☾ Mörkt"}
-          </button>
-          {refreshingAll ? (
+
+        <div className="ml-auto flex items-center gap-2">
+          {(refreshingAll || checkingStatus) && (
             <span className="text-xs text-muted-foreground">
-              Uppdaterar {refreshProgress.current}/{refreshProgress.total}...
+              {refreshingAll
+                ? `Uppdaterar ${refreshProgress.current}/${refreshProgress.total}...`
+                : `Kollar ${checkProgress.current}/${checkProgress.total}...`}
             </span>
-          ) : (
-            <button
-              onClick={handleRefreshAll}
-              disabled={cars.length === 0}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
-            >
-              Uppdatera alla
-            </button>
           )}
+
+          <button
+            onClick={() => setAddCarOpen(true)}
+            className="text-xs px-3 py-1 rounded bg-foreground text-background hover:opacity-80 transition-opacity font-medium"
+          >
+            Lägg till
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="text-muted-foreground hover:text-foreground transition-colors px-1 text-lg leading-none"
+              aria-label="Meny"
+            >
+              ···
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-40 w-48 rounded-md border border-border bg-background shadow-md py-1 text-sm">
+                  <button
+                    onClick={() => { setMenuOpen(false); handleRefreshAll() }}
+                    disabled={cars.length === 0 || refreshingAll || checkingStatus}
+                    className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Uppdatera alla
+                  </button>
+                  <button
+                    onClick={handleCheckSoldStatus}
+                    disabled={cars.length === 0 || refreshingAll || checkingStatus}
+                    className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Uppdatera status
+                  </button>
+                  <div className="my-1 border-t border-border" />
+                  <button
+                    onClick={() => { setMenuOpen(false); setTheme(resolvedTheme === "dark" ? "light" : "dark") }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent transition-colors text-muted-foreground"
+                  >
+                    {resolvedTheme === "dark" ? "☀ Ljust läge" : "☾ Mörkt läge"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -124,7 +188,6 @@ export function AppShell() {
       >
         {/* Car table — expands to full width when no selection */}
         <div className={`min-w-0 flex flex-col overflow-hidden ${!isMobile && selected ? "border-r border-border" : ""}`}>
-          <AddCarForm onAdd={handleAdd} />
           <div className="flex-1 overflow-y-auto">
             <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
           </div>
@@ -152,6 +215,26 @@ export function AppShell() {
           </main>
         </div>
       </div>
+
+      {/* Lägg till modal */}
+      {addCarOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setAddCarOpen(false)} />
+          <div className="fixed inset-x-4 top-14 z-50 rounded-xl border border-border bg-background shadow-lg sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-sm font-medium">Lägg till bil</span>
+              <button
+                onClick={() => setAddCarOpen(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors leading-none"
+                aria-label="Stäng"
+              >✕</button>
+            </div>
+            <div className="p-4">
+              <AddCarForm onAdd={handleAdd} onClose={() => setAddCarOpen(false)} />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Mobile bottom sheet */}
       {isMobile && (
