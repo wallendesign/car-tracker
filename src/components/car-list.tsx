@@ -23,11 +23,11 @@ const STATUS_LABEL: Record<CarStatus, string> = {
 }
 
 const STATUS_BADGE_CLASS: Record<CarStatus, string> = {
-  interested: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  interested: "text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:text-zinc-500 dark:ring-zinc-700",
   contacted: "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900",
   test_driven: "bg-zinc-600 text-zinc-50 dark:bg-zinc-500 dark:text-zinc-50",
   pass: "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500",
-  sold: "text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:text-zinc-600 dark:ring-zinc-700",
+  sold: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
 }
 
 const GRADE_CLASS: Record<GradeLevel, string> = {
@@ -71,7 +71,7 @@ type SortDir = "asc" | "desc"
 interface CarListProps {
   cars: CarRecord[]
   selectedId?: number | null
-  onSelect: (car: CarRecord) => void
+  onSelect: (car: CarRecord | null) => void
 }
 
 function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -334,7 +334,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                 return (
                   <tr
                     key={car.id}
-                    onClick={() => onSelect(car)}
+                    onClick={() => onSelect(car.id === selectedId ? null : car)}
                     className={`border-b border-border cursor-pointer transition-colors ${
                       car.id === selectedId ? "bg-accent" : "hover:bg-accent/50"
                     }`}

@@ -144,11 +144,11 @@ const STATUS_LABEL: Record<CarStatus, string> = {
 }
 
 const STATUS_BADGE_CLASS: Record<CarStatus, string> = {
-  interested: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  interested: "text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:text-zinc-500 dark:ring-zinc-700",
   contacted: "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900",
   test_driven: "bg-zinc-600 text-zinc-50 dark:bg-zinc-500 dark:text-zinc-50",
   pass: "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500",
-  sold: "text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:text-zinc-600 dark:ring-zinc-700",
+  sold: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
 }
 
 type RefreshStep = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
