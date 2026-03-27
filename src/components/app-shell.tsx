@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { AddCarForm } from "@/components/add-car-form"
 import { CarList } from "@/components/car-list"
 import { CarPanel } from "@/components/car-panel"
@@ -9,6 +10,7 @@ import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
 
 export function AppShell() {
+  const { resolvedTheme, setTheme } = useTheme()
   const [cars, setCars] = useState<CarRecord[]>([])
   const [selected, setSelected] = useState<CarRecord | null>(null)
   const [refreshingAll, setRefreshingAll] = useState(false)
@@ -68,7 +70,13 @@ export function AppShell() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
         <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-4">
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {resolvedTheme === "dark" ? "☀ Ljust" : "☾ Mörkt"}
+          </button>
           {refreshingAll ? (
             <span className="text-xs text-muted-foreground">
               Uppdaterar {refreshProgress.current}/{refreshProgress.total}...
