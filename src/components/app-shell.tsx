@@ -91,8 +91,8 @@ export function AppShell() {
         const data = await res.json()
         if (res.ok && data.isSold) {
           await updateCarStatus(car.id!, "sold")
-          setCars(prev => prev.map(c => c.id === car.id ? { ...c, status: "sold" } : c))
-          setSelected(prev => prev?.id === car.id ? { ...prev, status: "sold" } : prev)
+          setCars(prev => prev.map(c => c.id === car.id ? { ...c, status: "sold" as const } : c))
+          setSelected(prev => (prev !== null && prev.id === car.id) ? { ...prev, status: "sold" as const } : prev)
         }
       } catch { /* skip */ }
     }
