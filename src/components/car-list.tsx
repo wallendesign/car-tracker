@@ -240,7 +240,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                 <th onClick={() => handleSortClick("hp")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   HK <SortIndicator active={sortCol === "hp"} dir={sortDir} />
                 </th>
-                <th {...thProps("mileage")}>
+                <th onClick={() => handleSortClick("mileage")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   Miltal <SortIndicator active={sortCol === "mileage"} dir={sortDir} />
                 </th>
                 <th {...thProps("price")}>
@@ -288,6 +288,9 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                         {hpGrade
                           ? <GradePill grade={hpGrade} value={`${car.horsepower} hk`} />
                           : <span className="text-muted-foreground text-[11px]">—</span>}
+                        {mileageGrade
+                          ? <GradePill grade={mileageGrade} value={`${car.mileage!.toLocaleString("sv-SE")} mil`} />
+                          : car.mileage != null ? <span className="text-muted-foreground text-[11px] tabular-nums">{car.mileage.toLocaleString("sv-SE")} mil</span> : null}
                       </div>
                     </td>
 
@@ -306,7 +309,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     </td>
 
                     {/* Mileage */}
-                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                    <td className="hidden md:table-cell py-2 px-3 text-right whitespace-nowrap">
                       {mileageGrade
                         ? <GradePill grade={mileageGrade} value={`${car.mileage!.toLocaleString("sv-SE")} mil`} />
                         : <span className="text-muted-foreground">—</span>}
