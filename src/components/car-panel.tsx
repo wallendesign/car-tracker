@@ -1,11 +1,81 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { Tooltip } from "radix-ui"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 import { updateCarStatus, deleteCar, updateCarAISummary, updateCarData } from "@/lib/db"
 import { refreshCar } from "@/lib/refresh-car"
+import {
+  gradeYear,
+  gradeHorsepower,
+  gradeMileage,
+  gradePrice,
+  type Grade,
+  type GradeLevel,
+} from "@/lib/grade-metrics"
 import type { CarRecord, CarStatus } from "@/types/car"
+
+// ── Grade pill ────────────────────────────────────────────────────────────────
+
+const GRADE_CLASS: Record<GradeLevel, string> = {
+  great: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+  good: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400",
+  avg: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  poor: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+  bad: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+}
+
+const GRADE_LABEL: Record<GradeLevel, string> = {
+  great: "Utmärkt",
+  good: "Bra",
+  avg: "OK",
+  poor: "Sämre",
+  bad: "Dåligt",
+}
+
+function GradePill({ grade }: { grade: Grade }) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <span
+          className={cn(
+            "rounded-full px-1.5 text-[10px] font-medium leading-5 cursor-default shrink-0",
+            GRADE_CLASS[grade.level]
+          )}
+        >
+          {GRADE_LABEL[grade.level]}
+        </span>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side="top"
+          sideOffset={5}
+          className="z-50 max-w-[240px] rounded-md bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md border border-border"
+        >
+          {grade.tooltip}
+          <Tooltip.Arrow className="fill-popover" />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  )
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatAge(createdAt: number): string {
+  const days = Math.floor((Date.now() - createdAt) / (1000 * 60 * 60 * 24))
+  if (days === 0) return "Idag"
+  if (days === 1) return "Igår"
+  if (days < 7) return `${days} dagar sedan`
+  const weeks = Math.floor(days / 7)
+  if (days < 30) return `${weeks} vecka${weeks > 1 ? "r" : ""} sedan`
+  const months = Math.floor(days / 30)
+  if (days < 365) return `${months} månad${months > 1 ? "er" : ""} sedan`
+  const years = Math.floor(days / 365)
+  return `${years} år sedan`
+}
 
 function parseSummaryField(text: string): { intro: string; bullets: string[] } {
   const bullets: string[] = []
@@ -49,6 +119,8 @@ function SummaryField({ label, text }: { label: string; text: string }) {
   )
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const STATUSES: CarStatus[] = ["interested", "contacted", "pass", "sold"]
 
 const STATUS_LABEL: Record<CarStatus, string> = {
@@ -75,8 +147,12 @@ const REFRESH_LABEL: Record<RefreshStep, string> = {
   error: "Försök igen",
 }
 
+// ── Props ─────────────────────────────────────────────────────────────────────
+
 interface CarPanelProps {
   car: CarRecord | null
+  allCars?: CarRecord[]
+  showHeader?: boolean
   onStatusChange: (id: number, status: CarStatus) => void
   onDelete: (id: number) => void
   onRefresh: (car: CarRecord) => void
@@ -85,7 +161,19 @@ interface CarPanelProps {
   onClose: () => void
 }
 
-export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGenerated, onEdit, onClose }: CarPanelProps) {
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function CarPanel({
+  car,
+  allCars,
+  showHeader,
+  onStatusChange,
+  onDelete,
+  onRefresh,
+  onSummaryGenerated,
+  onEdit,
+  onClose,
+}: CarPanelProps) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [refreshStep, setRefreshStep] = useState<RefreshStep>("idle")
@@ -93,16 +181,19 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editDraft, setEditDraft] = useState<Partial<CarRecord>>({})
-  const panelRef = useRef<HTMLDivElement>(null)
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
+  const [statusMenuPos, setStatusMenuPos] = useState({ top: 0, left: 0 })
+  const [panelMenuOpen, setPanelMenuOpen] = useState(false)
+  const statusBadgeRef = useRef<HTMLButtonElement>(null)
 
-  // Reset edit/confirm state when car changes
   useEffect(() => {
     setConfirmDelete(false)
     setIsEditing(false)
     setEditDraft({})
+    setStatusMenuOpen(false)
+    setPanelMenuOpen(false)
   }, [car?.id])
 
-  // Keyboard handler
   useEffect(() => {
     if (!car) return
 
@@ -117,23 +208,17 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
       }
 
       if (e.key === "Escape") {
-        if (confirmDelete) {
-          setConfirmDelete(false)
-          setIsEditing(false)
-          return
-        }
-        if (isEditing) {
-          setIsEditing(false)
-          setEditDraft({})
-          return
-        }
+        if (statusMenuOpen) { setStatusMenuOpen(false); return }
+        if (panelMenuOpen) { setPanelMenuOpen(false); return }
+        if (confirmDelete) { setConfirmDelete(false); setIsEditing(false); return }
+        if (isEditing) { setIsEditing(false); setEditDraft({}); return }
         onClose()
       }
     }
 
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
-  }, [car, confirmDelete, isEditing, onClose])
+  }, [car, confirmDelete, isEditing, statusMenuOpen, panelMenuOpen, onClose])
 
   if (!car) {
     return (
@@ -142,6 +227,8 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
       </div>
     )
   }
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   async function handleStatusChange(status: CarStatus) {
     if (!car?.id) return
@@ -193,10 +280,7 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
     const data = await res.json()
     setGenerating(false)
 
-    if (!res.ok) {
-      setGenError(data.error)
-      return
-    }
+    if (!res.ok) { setGenError(data.error); return }
 
     const fields = {
       aiModelOverview: data.aiModelOverview,
@@ -254,257 +338,342 @@ export function CarPanel({ car, onStatusChange, onDelete, onRefresh, onSummaryGe
     setEditDraft({})
   }
 
-  const fields = [
-    car.price != null && { label: "Pris", value: `${car.price.toLocaleString("sv-SE")} kr` },
-    car.mileage != null && { label: "Miltal", value: `${car.mileage.toLocaleString("sv-SE")} mil` },
-    { label: "Årsmodell", value: String(car.year) },
-    car.location && { label: "Ort", value: car.location },
-  ].filter(Boolean) as { label: string; value: string }[]
+  function openStatusMenu() {
+    const el = statusBadgeRef.current
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      setStatusMenuPos({ top: rect.bottom + 4, left: rect.left })
+    }
+    setStatusMenuOpen(true)
+  }
+
+  // ── Grades ──────────────────────────────────────────────────────────────────
+
+  const allCarsCtx = allCars ?? []
+  const yearGrade = gradeYear(car.year, allCarsCtx)
+  const priceGrade = car.price != null ? gradePrice(car.price, car.year, allCarsCtx) : null
+  const mileageGrade = car.mileage != null ? gradeMileage(car.mileage, car.year, allCarsCtx) : null
+  const hpGrade = car.horsepower != null ? gradeHorsepower(car.horsepower, allCarsCtx) : null
 
   const hasSummary = car.aiModelOverview || car.aiCommonIssues || car.aiValueAssessment
-
   const inputClass = "w-full bg-muted rounded px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-foreground/30"
 
-  return (
-    <div ref={panelRef} className="flex flex-col gap-6">
-      {/* Photo */}
-      {car.photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`/api/image-proxy?url=${encodeURIComponent(car.photoUrl)}`}
-          alt={`${car.year} ${car.make} ${car.model}`}
-          className="aspect-video w-full rounded-md object-cover bg-muted"
-        />
-      ) : (
-        <div className="aspect-video w-full rounded-md bg-muted flex items-center justify-center">
-          <span className="text-xs text-muted-foreground">Ingen bild</span>
-        </div>
-      )}
+  // ── Render ──────────────────────────────────────────────────────────────────
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
+  return (
+    <Tooltip.Provider delayDuration={300}>
+      <div className="flex flex-col">
+
+        {/* ── Panel sticky header ── */}
+        {showHeader && (
+          <div className="sticky top-0 z-10 bg-background border-b border-border flex items-center h-10 px-4 shrink-0 gap-2">
+            <span className="text-sm font-medium truncate flex-1 min-w-0">
+              {isEditing ? "Redigera bil" : `${car.year} ${car.make} ${car.model}`}
+            </span>
+
+            {/* Refresh progress in header */}
+            {refreshStep !== "idle" && refreshStep !== "error" && (
+              <span className="text-xs text-muted-foreground shrink-0">{REFRESH_LABEL[refreshStep]}</span>
+            )}
+
+            {/* Panel 3-dots menu */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setPanelMenuOpen(v => !v)}
+                className="text-muted-foreground hover:text-foreground transition-colors px-1 text-lg leading-none"
+                aria-label="Åtgärder"
+              >
+                ···
+              </button>
+              {panelMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setPanelMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-1 z-40 w-40 rounded-md border border-border bg-background shadow-md py-1 text-sm">
+                    <button
+                      onClick={() => { setPanelMenuOpen(false); handleRefresh() }}
+                      disabled={refreshStep !== "idle" && refreshStep !== "error"}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {REFRESH_LABEL[refreshStep]}
+                    </button>
+                    <button
+                      onClick={() => { setPanelMenuOpen(false); startEditing() }}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors"
+                    >
+                      Redigera
+                    </button>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      onClick={() => { setPanelMenuOpen(false); setConfirmDelete(true) }}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors text-destructive"
+                    >
+                      Ta bort bil
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors leading-none"
+              aria-label="Stäng panel"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* ── Scrollable body ── */}
+        <div className="flex flex-col gap-6 p-6">
+
+          {/* Photo */}
+          {car.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/image-proxy?url=${encodeURIComponent(car.photoUrl)}`}
+              alt={`${car.year} ${car.make} ${car.model}`}
+              className="aspect-video w-full rounded-md object-cover bg-muted"
+            />
+          ) : (
+            <div className="aspect-video w-full rounded-md bg-muted flex items-center justify-center">
+              <span className="text-xs text-muted-foreground">Ingen bild</span>
+            </div>
+          )}
+
+          {/* Title / edit form */}
           {isEditing ? (
-            <div className="flex flex-col gap-2 mr-2">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  className={inputClass}
-                  value={editDraft.make ?? ""}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, make: e.target.value }))}
-                  placeholder="Märke"
-                />
-                <input
-                  className={inputClass}
-                  value={editDraft.model ?? ""}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, model: e.target.value }))}
-                  placeholder="Modell"
-                />
-                <input
-                  className={`${inputClass} sm:w-20`}
-                  type="number"
-                  value={editDraft.year ?? ""}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, year: Number(e.target.value) }))}
-                  placeholder="År"
-                />
+                <input className={inputClass} value={editDraft.make ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, make: e.target.value }))} placeholder="Märke" />
+                <input className={inputClass} value={editDraft.model ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, model: e.target.value }))} placeholder="Modell" />
+                <input className={`${inputClass} sm:w-20`} type="number" value={editDraft.year ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, year: Number(e.target.value) }))} placeholder="År" />
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  className={inputClass}
-                  type="number"
-                  value={editDraft.price ?? ""}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value ? Number(e.target.value) : null }))}
-                  placeholder="Pris (kr)"
-                />
-                <input
-                  className={inputClass}
-                  type="number"
-                  value={editDraft.mileage ?? ""}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, mileage: e.target.value ? Number(e.target.value) : null }))}
-                  placeholder="Miltal (mil)"
-                />
-                <input
-                  className={inputClass}
-                  type="number"
-                  value={editDraft.horsepower ?? ""}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, horsepower: e.target.value ? Number(e.target.value) : null }))}
-                  placeholder="HK"
-                />
+                <input className={inputClass} type="number" value={editDraft.price ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value ? Number(e.target.value) : null }))} placeholder="Pris (kr)" />
+                <input className={inputClass} type="number" value={editDraft.mileage ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, mileage: e.target.value ? Number(e.target.value) : null }))} placeholder="Miltal (mil)" />
+                <input className={inputClass} type="number" value={editDraft.horsepower ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, horsepower: e.target.value ? Number(e.target.value) : null }))} placeholder="HK" />
               </div>
-              <input
-                className={inputClass}
-                value={editDraft.location ?? ""}
-                onChange={(e) => setEditDraft((d) => ({ ...d, location: e.target.value || null }))}
-                placeholder="Ort"
-              />
+              <input className={inputClass} value={editDraft.location ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, location: e.target.value || null }))} placeholder="Ort" />
               <div className="flex gap-3">
                 <button onClick={saveEdit} className="text-xs text-foreground hover:underline font-medium">Spara</button>
                 <button onClick={() => { setIsEditing(false); setEditDraft({}) }} className="text-xs text-muted-foreground hover:text-foreground">Avbryt</button>
               </div>
             </div>
           ) : (
-            <>
-              <h2 className="text-lg font-semibold">
-                {car.year} {car.make} {car.model}
-              </h2>
-              <div className="flex items-center gap-3">
-                <a
-                  href={car.listingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-muted-foreground hover:underline"
-                >
-                  {car.marketplace} annons ↗
-                </a>
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshStep !== "idle" && refreshStep !== "error"}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                >
-                  {REFRESH_LABEL[refreshStep]}
-                </button>
-                <button
-                  onClick={startEditing}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Redigera
-                </button>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold">{car.year} {car.make} {car.model}</h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <a
+                    href={car.listingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-muted-foreground hover:underline"
+                  >
+                    {car.marketplace} annons ↗
+                  </a>
+                  {!showHeader && (
+                    <>
+                      <button
+                        onClick={handleRefresh}
+                        disabled={refreshStep !== "idle" && refreshStep !== "error"}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      >
+                        {REFRESH_LABEL[refreshStep]}
+                      </button>
+                      <button onClick={startEditing} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                        Redigera
+                      </button>
+                    </>
+                  )}
+                </div>
+                {refreshError && <p className="text-xs text-destructive mt-1">{refreshError}</p>}
               </div>
-              {refreshError && <p className="text-xs text-destructive mt-1">{refreshError}</p>}
+
+              {/* Status badge — clickable */}
+              <button ref={statusBadgeRef} onClick={openStatusMenu} className="shrink-0 mt-0.5">
+                <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>
+              </button>
+            </div>
+          )}
+
+          {/* Status dropdown */}
+          {statusMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setStatusMenuOpen(false)} />
+              <div
+                className="fixed z-50 w-40 rounded-md border border-border bg-background shadow-md py-1 text-sm"
+                style={{ top: statusMenuPos.top, left: statusMenuPos.left }}
+              >
+                {STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { handleStatusChange(s); setStatusMenuOpen(false) }}
+                    className={`w-full text-left px-4 py-2 hover:bg-accent transition-colors ${
+                      car.status === s ? "font-medium text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {STATUS_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <Separator />
+
+          {/* Main stats grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {car.price != null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Pris</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium">{car.price.toLocaleString("sv-SE")} kr</span>
+                  {priceGrade && <GradePill grade={priceGrade} />}
+                </div>
+              </div>
+            )}
+            {car.mileage != null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Miltal</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium">{car.mileage.toLocaleString("sv-SE")} mil</span>
+                  {mileageGrade && <GradePill grade={mileageGrade} />}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">Årsmodell</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-medium">{car.year}</span>
+                {yearGrade && <GradePill grade={yearGrade} />}
+              </div>
+            </div>
+            {car.horsepower != null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Motoreffekt</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium">{car.horsepower} hk</span>
+                  {hpGrade && <GradePill grade={hpGrade} />}
+                </div>
+              </div>
+            )}
+            {car.location && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Ort</span>
+                <span className="text-sm font-medium">{car.location}</span>
+              </div>
+            )}
+            {car.createdAt != null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Annons tillagd</span>
+                <span className="text-sm font-medium">{formatAge(car.createdAt)}</span>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* AI Summary */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AI-sammanfattning</span>
+              <button
+                onClick={handleGenerateSummary}
+                disabled={generating}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                {generating ? "Genererar..." : hasSummary ? "Regenerera" : "Generera"}
+              </button>
+            </div>
+
+            {genError && <p className="text-xs text-destructive">{genError}</p>}
+
+            {hasSummary ? (
+              <div className="flex flex-col gap-4">
+                {car.aiModelOverview && <SummaryField label="Översikt" text={car.aiModelOverview} />}
+                {car.aiCommonIssues && <SummaryField label="Kända problem" text={car.aiCommonIssues} />}
+                {car.aiValueAssessment && <SummaryField label="Värdebedömning" text={car.aiValueAssessment} />}
+              </div>
+            ) : !generating && (
+              <p className="text-xs text-muted-foreground">
+                Få en AI-genererad översikt, kända problem och prisvärdering för denna bil.
+              </p>
+            )}
+          </div>
+
+          {/* Specs */}
+          {(() => {
+            const specs = [
+              car.bodyType && { label: "Biltyp", value: car.bodyType },
+              car.fuelType && { label: "Drivmedel", value: car.fuelType },
+              car.transmission && { label: "Växellåda", value: car.transmission },
+              car.driveType && { label: "Drivhjul", value: car.driveType },
+              car.engineVolume && { label: "Motorvolym", value: car.engineVolume },
+              car.color && { label: "Färg", value: car.color },
+              car.seats != null && { label: "Säten", value: String(car.seats) },
+              car.registrationDate && { label: "Reg.datum", value: car.registrationDate },
+            ].filter(Boolean) as { label: string; value: string }[]
+            if (specs.length === 0) return null
+            return (
+              <>
+                <Separator />
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Specifikationer</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {specs.map(({ label, value }) => (
+                      <div key={label} className="flex flex-col gap-0.5">
+                        <span className="text-xs text-muted-foreground">{label}</span>
+                        <span className="text-sm font-medium">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )
+          })()}
+
+          {/* Equipment */}
+          {car.equipment && car.equipment.length > 0 && (
+            <>
+              <Separator />
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Utrustning</span>
+                <div className="flex flex-wrap gap-1">
+                  {car.equipment.map((item) => (
+                    <span key={item} className="text-xs border border-border rounded px-2 py-0.5 text-muted-foreground">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Delete — always shown in mobile (no header), shown inline when confirmDelete on desktop */}
+          {(confirmDelete || !showHeader) && (
+            <>
+              <Separator />
+              {confirmDelete ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-destructive">Är du säker?</span>
+                  <button onClick={handleDelete} className="text-xs text-destructive hover:underline">Ta bort</button>
+                  <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted-foreground hover:text-foreground">Avbryt</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-xs text-muted-foreground hover:text-destructive transition-colors text-left"
+                >
+                  Ta bort bil
+                </button>
+              )}
             </>
           )}
         </div>
-        {!isEditing && <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>}
       </div>
-
-      <Separator />
-
-      {/* Details */}
-      <div className="grid grid-cols-2 gap-3">
-        {fields.map(({ label, value }) => (
-          <div key={label} className="flex flex-col gap-0.5">
-            <span className="text-xs text-muted-foreground">{label}</span>
-            <span className="text-sm font-medium">{value}</span>
-          </div>
-        ))}
-      </div>
-
-      <Separator />
-
-      {/* Status */}
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Statusändring</span>
-        <div className="flex flex-wrap gap-2">
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              className={`text-xs px-3 py-1 rounded border transition-colors ${
-                car.status === s
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-              }`}
-            >
-              {STATUS_LABEL[s]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* AI Summary */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AI-sammanfattning</span>
-          <button
-            onClick={handleGenerateSummary}
-            disabled={generating}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-          >
-            {generating ? "Genererar..." : hasSummary ? "Regenerera" : "Generera"}
-          </button>
-        </div>
-
-        {genError && <p className="text-xs text-destructive">{genError}</p>}
-
-        {hasSummary ? (
-          <div className="flex flex-col gap-4">
-            {car.aiModelOverview && <SummaryField label="Översikt" text={car.aiModelOverview} />}
-            {car.aiCommonIssues && <SummaryField label="Kända problem" text={car.aiCommonIssues} />}
-            {car.aiValueAssessment && <SummaryField label="Värdebedömning" text={car.aiValueAssessment} />}
-          </div>
-        ) : !generating && (
-          <p className="text-xs text-muted-foreground">
-            Få en AI-genererad översikt, kända problem och prisvärdering för denna bil.
-          </p>
-        )}
-      </div>
-
-      {/* Specs */}
-      {(() => {
-        const specs = [
-          car.bodyType && { label: "Biltyp", value: car.bodyType },
-          car.fuelType && { label: "Drivmedel", value: car.fuelType },
-          car.transmission && { label: "Växellåda", value: car.transmission },
-          car.driveType && { label: "Drivhjul", value: car.driveType },
-          car.engineVolume && { label: "Motorvolym", value: car.engineVolume },
-          car.color && { label: "Färg", value: car.color },
-          car.seats != null && { label: "Säten", value: String(car.seats) },
-          car.registrationDate && { label: "Reg.datum", value: car.registrationDate },
-        ].filter(Boolean) as { label: string; value: string }[]
-        if (specs.length === 0) return null
-        return (
-          <>
-            <Separator />
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Specifikationer</span>
-              <div className="grid grid-cols-2 gap-3">
-                {specs.map(({ label, value }) => (
-                  <div key={label} className="flex flex-col gap-0.5">
-                    <span className="text-xs text-muted-foreground">{label}</span>
-                    <span className="text-sm font-medium">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )
-      })()}
-
-      {/* Equipment */}
-      {car.equipment && car.equipment.length > 0 && (
-        <>
-          <Separator />
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Utrustning</span>
-            <div className="flex flex-wrap gap-1">
-              {car.equipment.map((item) => (
-                <span key={item} className="text-xs border border-border rounded px-2 py-0.5 text-muted-foreground">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      <Separator />
-
-      {/* Delete */}
-      {confirmDelete ? (
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-destructive">Är du säker?</span>
-          <button onClick={handleDelete} className="text-xs text-destructive hover:underline">Ta bort</button>
-          <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted-foreground hover:text-foreground">Avbryt</button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setConfirmDelete(true)}
-          className="text-xs text-muted-foreground hover:text-destructive transition-colors text-left"
-        >
-          Ta bort bil
-        </button>
-      )}
-    </div>
+    </Tooltip.Provider>
   )
 }

@@ -173,6 +173,12 @@ export function AppShell() {
             )}
           </div>
         </div>
+
+        {/* Spacer that mirrors the panel width so header content stays left-aligned */}
+        <div
+          className="shrink-0 overflow-hidden transition-[width] duration-300"
+          style={{ width: !isMobile && selected ? "calc(100% / 3)" : 0 }}
+        />
       </header>
 
       <div
@@ -195,16 +201,11 @@ export function AppShell() {
 
         {/* Detail panel — slides in from the right (desktop only) */}
         <div className="hidden md:block overflow-hidden" style={{ minWidth: 0 }}>
-          <main className="relative h-full overflow-y-auto p-6">
-            <button
-              onClick={() => setSelected(null)}
-              className="absolute top-3 right-4 text-base text-muted-foreground hover:text-foreground transition-colors leading-none"
-              aria-label="Stäng panel"
-            >
-              ✕
-            </button>
+          <div className="h-full overflow-y-auto">
             <CarPanel
               car={selected}
+              allCars={cars}
+              showHeader={true}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
               onRefresh={handleRefresh}
@@ -212,7 +213,7 @@ export function AppShell() {
               onEdit={handleEdit}
               onClose={() => setSelected(null)}
             />
-          </main>
+          </div>
         </div>
       </div>
 
@@ -270,6 +271,8 @@ export function AppShell() {
             <div className="flex-1 overflow-y-auto p-4">
               <CarPanel
                 car={selected}
+                allCars={cars}
+                showHeader={false}
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}
                 onRefresh={handleRefresh}
