@@ -26,6 +26,7 @@ export interface CarRecord {
   color: string | null
   seats: number | null
   registrationDate: string | null
+  listingDate: string | null      // Date listing was published/updated (from marketplace)
   equipment: string[] | null
   photoUrl: string | null  // Main listing photo URL (external CDN); null if not available
   // AI summary fields (populated in Phase 4 — null until then)

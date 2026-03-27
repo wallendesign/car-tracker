@@ -12,6 +12,7 @@ import {
   gradeHorsepower,
   gradeMileage,
   gradePrice,
+  gradeListingAge,
   type Grade,
   type GradeLevel,
 } from "@/lib/grade-metrics"
@@ -75,6 +76,18 @@ function formatAge(createdAt: number): string {
   if (days < 365) return `${months} månad${months > 1 ? "er" : ""} sedan`
   const years = Math.floor(days / 365)
   return `${years} år sedan`
+}
+
+function formatListingDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  const hasTime = /T\d{2}:\d{2}/.test(dateStr)
+  const datePart = date.toLocaleDateString("sv-SE", { year: "numeric", month: "long", day: "numeric" })
+  if (hasTime) {
+    const timePart = date.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })
+    return `${datePart}, ${timePart}`
+  }
+  return datePart
 }
 
 function parseSummaryField(text: string): { intro: string; bullets: string[] } {
@@ -328,6 +341,7 @@ export function CarPanel({
       color: updated.color,
       seats: updated.seats,
       registrationDate: updated.registrationDate,
+      listingDate: updated.listingDate,
       equipment: updated.equipment,
       aiModelOverview: updated.aiModelOverview,
       aiCommonIssues: updated.aiCommonIssues,
@@ -354,6 +368,7 @@ export function CarPanel({
   const priceGrade = car.price != null ? gradePrice(car.price, car.year, allCarsCtx) : null
   const mileageGrade = car.mileage != null ? gradeMileage(car.mileage, car.year, allCarsCtx) : null
   const hpGrade = car.horsepower != null ? gradeHorsepower(car.horsepower, allCarsCtx) : null
+  const listingAgeGrade = gradeListingAge(car.listingDate ?? null)
 
   const hasSummary = car.aiModelOverview || car.aiCommonIssues || car.aiValueAssessment
   const inputClass = "w-full bg-muted rounded px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-foreground/30"
@@ -566,10 +581,13 @@ export function CarPanel({
                 <span className="text-sm font-medium">{car.location}</span>
               </div>
             )}
-            {car.createdAt != null && (
+            {car.listingDate && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-muted-foreground">Annons tillagd</span>
-                <span className="text-sm font-medium">{formatAge(car.createdAt)}</span>
+                <span className="text-xs text-muted-foreground">Uppdaterad</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium">{formatListingDate(car.listingDate)}</span>
+                  {listingAgeGrade && <GradePill grade={listingAgeGrade} />}
+                </div>
               </div>
             )}
           </div>

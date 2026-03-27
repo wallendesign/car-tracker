@@ -21,6 +21,7 @@ const CarSchema = z.object({
   color: z.string().nullable().describe("Car color in Swedish, null if not found"),
   seats: z.number().nullable().describe("Number of seats as integer, null if not found"),
   registrationDate: z.string().nullable().describe("Registration date as string e.g. '2013-10-09', null if not found"),
+  listingDate: z.string().nullable().describe("Date when the listing was published or last updated, as ISO 8601 string e.g. '2026-03-05' or '2026-03-05T10:57:00', null if not found"),
   equipment: z.array(z.string()).nullable().describe("List of equipment/options from the listing, empty array if none found"),
 })
 

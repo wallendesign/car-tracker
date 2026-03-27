@@ -49,6 +49,7 @@ export async function PATCH(
       color = ${body.color ?? null},
       seats = ${body.seats ?? null},
       registration_date = ${body.registrationDate ?? null},
+      listing_date = ${body.listingDate ?? null},
       equipment = ${eq},
       ai_model_overview = ${body.aiModelOverview ?? null},
       ai_common_issues = ${body.aiCommonIssues ?? null},

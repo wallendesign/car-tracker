@@ -180,7 +180,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
         {/* Toolbar: count · status pills · search · filtrera */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border overflow-x-auto">
+        <div className="flex h-10 shrink-0 items-center gap-2 px-3 border-b border-border overflow-x-auto">
           {/* Count */}
           <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
             {displayed.length} bil{displayed.length !== 1 ? "ar" : ""}

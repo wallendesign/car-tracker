@@ -45,6 +45,7 @@ export async function addCarFromUrl(url: string): Promise<AddCarResult> {
     color: analyzeData.color ?? null,
     seats: analyzeData.seats ?? null,
     registrationDate: analyzeData.registrationDate ?? null,
+    listingDate: analyzeData.listingDate ?? null,
     equipment: analyzeData.equipment ?? null,
     photoUrl: analyzeData.photoUrl,
     aiModelOverview: null,

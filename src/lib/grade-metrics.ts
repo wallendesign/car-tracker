@@ -106,6 +106,27 @@ export function gradeMileage(
   }
 }
 
+export function gradeListingAge(listingDate: string | null): Grade | null {
+  if (!listingDate) return null
+  const date = new Date(listingDate)
+  if (isNaN(date.getTime())) return null
+
+  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24))
+  if (days < 0) return null
+
+  let level: GradeLevel
+  let desc: string
+
+  if (days < 7) { level = "great"; desc = "Nytt på marknaden – annonserades nyligen." }
+  else if (days < 30) { level = "good"; desc = "Relativt ny annons." }
+  else if (days < 90) { level = "avg"; desc = "Har legat ute ett tag." }
+  else if (days < 180) { level = "poor"; desc = "Gammal annons – möjligt förhandlingsläge." }
+  else { level = "bad"; desc = "Mycket gammal – ovanligt länge osåld." }
+
+  const ageStr = days === 0 ? "idag" : days === 1 ? "igår" : `${days} dagar sedan`
+  return { level, tooltip: `${GRADE_WORD[level]} – Uppdaterad ${ageStr}. ${desc}` }
+}
+
 export function gradePrice(
   price: number | null | undefined,
   year: number | null | undefined,

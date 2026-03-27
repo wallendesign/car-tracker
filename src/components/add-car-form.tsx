@@ -101,6 +101,7 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
       color: analyzeData.color ?? null,
       seats: analyzeData.seats ?? null,
       registrationDate: analyzeData.registrationDate ?? null,
+      listingDate: analyzeData.listingDate ?? null,
       equipment: analyzeData.equipment ?? null,
       aiModelOverview: null,
       aiCommonIssues: null,

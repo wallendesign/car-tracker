@@ -24,6 +24,7 @@ async function ensureTable() {
       color TEXT,
       seats INTEGER,
       registration_date TEXT,
+      listing_date TEXT,
       equipment TEXT,
       ai_model_overview TEXT,
       ai_common_issues TEXT,
@@ -32,6 +33,8 @@ async function ensureTable() {
       created_at BIGINT NOT NULL
     )
   `
+  // Migration: add listing_date column to existing tables
+  await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS listing_date TEXT`
 }
 
 function rowToCar(row: Record<string, unknown>): CarRecord {
@@ -55,6 +58,7 @@ function rowToCar(row: Record<string, unknown>): CarRecord {
     color: row.color as string | null,
     seats: row.seats as number | null,
     registrationDate: row.registration_date as string | null,
+    listingDate: row.listing_date as string | null,
     equipment: row.equipment ? (JSON.parse(row.equipment as string) as string[]) : null,
     aiModelOverview: row.ai_model_overview as string | null,
     aiCommonIssues: row.ai_common_issues as string | null,
@@ -84,14 +88,14 @@ export async function POST(req: NextRequest) {
     INSERT INTO cars (
       listing_url, marketplace, make, model, year, price, mileage, horsepower,
       location, photo_url, body_type, fuel_type, transmission, drive_type,
-      engine_volume, color, seats, registration_date, equipment,
+      engine_volume, color, seats, registration_date, listing_date, equipment,
       ai_model_overview, ai_common_issues, ai_value_assessment, status, created_at
     ) VALUES (
       ${car.listingUrl}, ${car.marketplace}, ${car.make}, ${car.model}, ${car.year},
       ${car.price}, ${car.mileage}, ${car.horsepower}, ${car.location}, ${car.photoUrl},
       ${car.bodyType}, ${car.fuelType}, ${car.transmission}, ${car.driveType},
       ${car.engineVolume}, ${car.color}, ${car.seats}, ${car.registrationDate},
-      ${eq}, ${car.aiModelOverview}, ${car.aiCommonIssues}, ${car.aiValueAssessment},
+      ${car.listingDate}, ${eq}, ${car.aiModelOverview}, ${car.aiCommonIssues}, ${car.aiValueAssessment},
       ${car.status}, ${car.createdAt}
     )
     RETURNING *

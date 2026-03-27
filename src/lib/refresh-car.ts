@@ -72,6 +72,7 @@ export async function refreshCar(car: CarRecord, onStep?: StepCallback): Promise
     color: analyzeData.color ?? null,
     seats: analyzeData.seats ?? null,
     registrationDate: analyzeData.registrationDate ?? null,
+    listingDate: analyzeData.listingDate ?? null,
     equipment: analyzeData.equipment ?? null,
     aiModelOverview: summaryRes.ok ? summaryData.aiModelOverview : car.aiModelOverview,
     aiCommonIssues: summaryRes.ok ? summaryData.aiCommonIssues : car.aiCommonIssues,
