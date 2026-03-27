@@ -1,60 +1,64 @@
 // src/lib/db.ts
-// Dexie.js v4 — IndexedDB persistence layer for CarRecord
-// IMPORTANT: Only import this in Client Components or hooks (IndexedDB is browser-only)
-// See RESEARCH.md Pitfall 1: "window is not defined" if imported in Server Components
+// Server-backed persistence via /api/cars routes (Neon Postgres)
+// Previously used Dexie.js (IndexedDB) — swapped to cross-device server storage.
+// All function signatures are identical so components need no changes.
 
-import Dexie, { type EntityTable } from "dexie"
 import type { CarRecord } from "@/types/car"
 
-const db = new Dexie("CarTrackerDB") as Dexie & {
-  cars: EntityTable<CarRecord, "id">
-}
-
-db.version(1).stores({
-  // Indexed fields: id (PK, auto-increment), make, model, year, status, createdAt
-  // Only index fields you query/sort by — photoUrl and AI text fields are NOT indexed
-  cars: "++id, make, model, year, status, createdAt",
-})
-
-export { db }
-
-// Typed helper functions — import these in client components instead of using db directly
-// This gives Phase 3 a clean API surface
-
 export async function saveCar(car: Omit<CarRecord, "id">): Promise<number> {
-  // Dexie auto-increment always returns the generated key; cast is safe here
-  return db.cars.add(car) as Promise<number>
+  const res = await fetch("/api/cars", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(car),
+  })
+  const data = await res.json()
+  return data.id as number
 }
 
 export async function getAllCars(): Promise<CarRecord[]> {
-  return db.cars.orderBy("createdAt").reverse().toArray()
+  const res = await fetch("/api/cars")
+  return res.json()
 }
 
 export async function updateCarStatus(
   id: number,
   status: CarRecord["status"]
 ): Promise<void> {
-  await db.cars.update(id, { status })
+  await fetch(`/api/cars/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
 }
 
 export async function updateCarAISummary(
   id: number,
   fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">
 ): Promise<void> {
-  await db.cars.update(id, fields)
+  await fetch(`/api/cars/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  })
 }
 
 export async function updateCarData(
   id: number,
   data: Omit<CarRecord, "id" | "status" | "createdAt">
 ): Promise<void> {
-  await db.cars.update(id, data)
+  await fetch(`/api/cars/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
 }
 
 export async function deleteCar(id: number): Promise<void> {
-  await db.cars.delete(id)
+  await fetch(`/api/cars/${id}`, { method: "DELETE" })
 }
 
 export async function getCarByUrl(url: string): Promise<CarRecord | undefined> {
-  return db.cars.filter((c) => c.listingUrl === url).first()
+  const res = await fetch(`/api/cars?url=${encodeURIComponent(url)}`)
+  const data = await res.json()
+  return data ?? undefined
 }
