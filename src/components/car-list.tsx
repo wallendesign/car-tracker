@@ -96,11 +96,22 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   const [mileageMax, setMileageMax] = useState<number | "">("")
   const [searchOpen, setSearchOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterPos, setFilterPos] = useState({ top: 0, right: 0 })
   const searchRef = useRef<HTMLInputElement>(null)
+  const filterBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus()
   }, [searchOpen])
+
+  function openFilters() {
+    const btn = filterBtnRef.current
+    if (btn) {
+      const rect = btn.getBoundingClientRect()
+      setFilterPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    }
+    setFiltersOpen(true)
+  }
 
   function handleSortClick(col: SortCol) {
     if (sortCol === col) {
@@ -210,7 +221,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs"
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs px-2.5 py-0.5 rounded-full hover:bg-accent"
                 aria-label="Sök"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -222,9 +233,10 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
           </div>
 
           {/* Filtrera dropdown */}
-          <div className="relative shrink-0">
+          <div className="shrink-0">
             <button
-              onClick={() => setFiltersOpen(v => !v)}
+              ref={filterBtnRef}
+              onClick={() => filtersOpen ? setFiltersOpen(false) : openFilters()}
               className={`text-xs px-2.5 py-0.5 rounded-full transition-colors ${
                 filtersOpen || yearMin !== "" || yearMax !== "" || priceMin !== "" || priceMax !== "" || hpMin !== "" || hpMax !== "" || mileageMin !== "" || mileageMax !== ""
                   ? "bg-foreground text-background"
@@ -235,8 +247,8 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
             </button>
             {filtersOpen && (
               <>
-                <div className="fixed inset-0 z-30" onClick={() => setFiltersOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-40 w-64 rounded-md border border-border bg-background shadow-md p-3 flex flex-col gap-3">
+                <div className="fixed inset-0 z-40" onClick={() => setFiltersOpen(false)} />
+                <div className="fixed z-50 w-64 rounded-md border border-border bg-background shadow-md p-3 flex flex-col gap-3" style={{ top: filterPos.top, right: filterPos.right }}>
                   {/* År */}
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="w-12 shrink-0">År</span>
