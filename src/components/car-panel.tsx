@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Tooltip } from "radix-ui"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { updateCarStatus, deleteCar, updateCarAISummary, updateCarData } from "@/lib/db"
@@ -134,20 +133,22 @@ function SummaryField({ label, text }: { label: string; text: string }) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const STATUSES: CarStatus[] = ["interested", "contacted", "pass", "sold"]
+const STATUSES: CarStatus[] = ["interested", "contacted", "test_driven", "pass", "sold"]
 
 const STATUS_LABEL: Record<CarStatus, string> = {
-  interested: "Intresserad",
-  contacted: "Kontaktad",
-  pass: "Passar ej",
+  interested: "Tillagd",
+  contacted: "Favorit",
+  test_driven: "Provkörd",
+  pass: "Ej intressant",
   sold: "Såld",
 }
 
-const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
-  interested: "default",
-  contacted: "secondary",
-  pass: "outline",
-  sold: "outline",
+const STATUS_BADGE_CLASS: Record<CarStatus, string> = {
+  interested: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  contacted: "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900",
+  test_driven: "bg-zinc-600 text-zinc-50 dark:bg-zinc-500 dark:text-zinc-50",
+  pass: "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500",
+  sold: "text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:text-zinc-600 dark:ring-zinc-700",
 }
 
 type RefreshStep = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
@@ -509,7 +510,9 @@ export function CarPanel({
 
               {/* Status badge — clickable */}
               <button ref={statusBadgeRef} onClick={openStatusMenu} className="shrink-0 mt-0.5">
-                <Badge variant={STATUS_VARIANT[car.status]}>{STATUS_LABEL[car.status]}</Badge>
+                <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE_CLASS[car.status])}>
+                  {STATUS_LABEL[car.status]}
+                </span>
               </button>
             </div>
           )}

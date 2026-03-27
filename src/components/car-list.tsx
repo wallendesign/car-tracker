@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Tooltip } from "radix-ui"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import {
   gradeYear,
@@ -15,18 +14,20 @@ import {
 
 import type { CarRecord, CarStatus } from "@/types/car"
 
-const STATUS_VARIANT: Record<CarStatus, "default" | "secondary" | "outline"> = {
-  interested: "default",
-  contacted: "secondary",
-  pass: "outline",
-  sold: "outline",
+const STATUS_LABEL: Record<CarStatus, string> = {
+  interested: "Tillagd",
+  contacted: "Favorit",
+  test_driven: "Provkörd",
+  pass: "Ej intressant",
+  sold: "Såld",
 }
 
-const STATUS_LABEL: Record<CarStatus, string> = {
-  interested: "Intresserad",
-  contacted: "Kontaktad",
-  pass: "Passar ej",
-  sold: "Såld",
+const STATUS_BADGE_CLASS: Record<CarStatus, string> = {
+  interested: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  contacted: "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900",
+  test_driven: "bg-zinc-600 text-zinc-50 dark:bg-zinc-500 dark:text-zinc-50",
+  pass: "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500",
+  sold: "text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:text-zinc-600 dark:ring-zinc-700",
 }
 
 const GRADE_CLASS: Record<GradeLevel, string> = {
@@ -74,8 +75,8 @@ interface CarListProps {
 }
 
 function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="ml-1 opacity-30">↕</span>
-  return <span className="ml-1">{dir === "asc" ? "↑" : "↓"}</span>
+  if (active) return <span className="ml-1">{dir === "asc" ? "↑" : "↓"}</span>
+  return <span className="ml-1 opacity-0 group-hover:opacity-30 transition-opacity">↕</span>
 }
 
 const rangeInputClass =
@@ -121,6 +122,12 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
       setSortDir("asc")
     }
   }
+
+  const statusCounts = useMemo(() => {
+    const counts: Partial<Record<CarStatus | "all", number>> = { all: cars.length }
+    for (const c of cars) counts[c.status] = (counts[c.status] ?? 0) + 1
+    return counts
+  }, [cars])
 
   const displayed = useMemo(() => {
     let result = statusFilter === "all" ? cars : cars.filter((c) => c.status === statusFilter)
@@ -172,32 +179,27 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   function thProps(col: SortCol, align: "left" | "right" = "right") {
     return {
       onClick: () => handleSortClick(col),
-      className: `py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-${align}`,
+      className: `group py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-${align}`,
     }
   }
 
   return (
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
-        {/* Toolbar: count · status pills · search · filtrera */}
-        <div className="flex h-10 shrink-0 items-center gap-2 px-3 border-b border-border overflow-x-auto">
-          {/* Count */}
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            {displayed.length} bil{displayed.length !== 1 ? "ar" : ""}
-          </span>
-
-          {/* Status pills */}
-          {(["all", "interested", "contacted", "pass", "sold"] as const).map((s) => (
+        {/* Toolbar: status pills · search · filtrera */}
+        <div className="flex h-10 shrink-0 items-center gap-1 px-3 border-b border-border overflow-x-auto">
+          {/* Status pills with counts */}
+          {(["all", "interested", "contacted", "test_driven", "pass", "sold"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs transition-colors whitespace-nowrap ${
                 statusFilter === s
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
-              {s === "all" ? "Alla" : STATUS_LABEL[s]}
+              {s === "all" ? `Alla (${statusCounts.all ?? 0})` : `${STATUS_LABEL[s]} (${statusCounts[s] ?? 0})`}
             </button>
           ))}
 
@@ -295,13 +297,13 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                 <th {...thProps("model", "left")}>
                   Modell <SortIndicator active={sortCol === "model"} dir={sortDir} />
                 </th>
-                <th onClick={() => handleSortClick("year")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
+                <th onClick={() => handleSortClick("year")} className="group hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   År <SortIndicator active={sortCol === "year"} dir={sortDir} />
                 </th>
-                <th onClick={() => handleSortClick("hp")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
+                <th onClick={() => handleSortClick("hp")} className="group hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   HK <SortIndicator active={sortCol === "hp"} dir={sortDir} />
                 </th>
-                <th onClick={() => handleSortClick("mileage")} className="hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
+                <th onClick={() => handleSortClick("mileage")} className="group hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   Miltal <SortIndicator active={sortCol === "mileage"} dir={sortDir} />
                 </th>
                 <th {...thProps("price")}>
@@ -326,8 +328,8 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     }`}
                   >
                     {/* Thumbnail */}
-                    <td className="py-2 px-3">
-                      <div className="w-10 h-7 rounded bg-muted overflow-hidden shrink-0">
+                    <td className="py-2 pl-3 pr-1">
+                      <div className="w-14 h-10 rounded bg-muted overflow-hidden shrink-0">
                         {car.photoUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -340,7 +342,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     </td>
 
                     {/* Make + Model */}
-                    <td className="py-2 px-3 font-medium">
+                    <td className="py-2 pl-1 pr-3 font-medium">
                       <div className="whitespace-nowrap">{car.make} {car.model}</div>
                       <div className="flex items-center gap-1.5 mt-0.5 md:hidden">
                         {yearGrade
@@ -386,12 +388,12 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                     {/* Status */}
                     <td className="hidden md:table-cell py-2 px-3">
                       {car.status !== "interested" && (
-                        <Badge
-                          variant={STATUS_VARIANT[car.status]}
-                          className={`text-xs${car.status === "sold" ? " opacity-50" : ""}`}
-                        >
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          STATUS_BADGE_CLASS[car.status]
+                        )}>
                           {STATUS_LABEL[car.status]}
-                        </Badge>
+                        </span>
                       )}
                     </td>
                   </tr>
