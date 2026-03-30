@@ -6,7 +6,7 @@ export type CarStatus = "interested" | "contacted" | "test_driven" | "pass" | "s
 export type Marketplace = "blocket" | "bytbil" | "autouncle"
 
 export interface AiTldr {
-  drawback: string[]      // 1–2 bullet points
+  drawback: string        // 1–2 sentence description of main drawbacks
   risk: string
   standout: string
   recommendation: string

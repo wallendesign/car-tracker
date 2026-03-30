@@ -655,17 +655,10 @@ export function CarPanel({
             <div className="bg-muted/50 rounded-lg px-4 py-3 flex flex-col gap-2">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">TL;DR</span>
               <div className="flex flex-col gap-1.5 text-sm">
-                {car.aiTldr.drawback.length > 0 && (
+                {car.aiTldr.drawback && (
                   <div className="flex gap-2">
                     <span className="text-muted-foreground shrink-0 w-24 text-xs pt-px">Nackdel</span>
-                    <ul className="flex flex-col gap-0.5">
-                      {car.aiTldr.drawback.map((d, i) => (
-                        <li key={i} className="flex gap-1.5">
-                          <span className="text-muted-foreground shrink-0 mt-px">•</span>
-                          <span>{d}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <span>{car.aiTldr.drawback}</span>
                   </div>
                 )}
                 <div className="flex gap-2">

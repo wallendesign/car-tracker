@@ -13,14 +13,11 @@ const SummarySchema = z.object({
   aiValueAssessment: z.string().describe(
     "1-2 sentence direct verdict on whether the price is fair given mileage and Swedish market, then 2-3 bullet points each starting with '• ' with specific supporting context: typical market price range, mileage assessment, and one key value factor. No other formatting."
   ),
-  aiScore: z.number().min(0).max(100).transform(n => Math.round(n)).describe(
+  aiScore: z.number().min(0).max(100).describe(
     "Composite score 0–100 based on: value for money (30%), reliability/risk (25%), condition indicators (mileage/age, 25%), and overall desirability (20%). Higher is better. Return a whole number."
   ),
   aiTldr: z.object({
-    drawback: z.preprocess(
-      v => typeof v === "string" ? v.split(/\n|•/).map(s => s.trim()).filter(Boolean) : v,
-      z.array(z.string())
-    ).describe("Array of 1–2 short strings listing the main drawbacks of this specific car"),
+    drawback: z.string().describe("1–2 sentences describing the main drawbacks of this specific car"),
     risk: z.string().describe("One sentence about the biggest risk or concern with this car"),
     standout: z.string().describe("One sentence about what makes this car stand out positively"),
     recommendation: z.string().describe("One direct sentence: should the buyer pursue this car or not, and why"),
