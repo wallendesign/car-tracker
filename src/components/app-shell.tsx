@@ -37,6 +37,16 @@ export function AppShell() {
     getAllCars().then(setCars)
   }, [])
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return
+      if (addCarOpen) { setAddCarOpen(false); return }
+      if (menuOpen) { setMenuOpen(false); return }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [addCarOpen, menuOpen])
+
   function handleAdd(car: CarRecord) {
     setCars((prev) => {
       const exists = prev.some((c) => c.id === car.id)

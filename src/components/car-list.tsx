@@ -183,7 +183,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
     <Tooltip.Provider delayDuration={300}>
       <div className="flex flex-col">
         {/* Toolbar */}
-        <div className="flex flex-col shrink-0 border-b border-border">
+        <div className="flex flex-col shrink-0 border-b border-border sticky top-0 z-10 bg-background">
           {/* Row 1: status pills (+ search+filter inline on md+) */}
           <div className="flex h-10 items-center gap-1 px-3 overflow-x-auto">
             {(["all", "contacted", "test_driven", "pass", "sold"] as const).map((s) => {
@@ -194,7 +194,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`shrink-0 flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-0.5 text-xs transition-colors whitespace-nowrap ${
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full pl-2.5 pr-1 py-0.5 text-xs transition-colors whitespace-nowrap ${
                     active
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -216,7 +216,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
             <div className="ml-auto hidden md:flex items-center gap-1 shrink-0">
               {searchOpen ? (
                 <div className="flex items-center gap-1.5">
-                  <input ref={searchRef} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök märke eller modell..." className="w-40 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70" />
+                  <input ref={searchRef} type="search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Escape" && (setSearch(""), setSearchOpen(false))} placeholder="Sök märke eller modell..." className="w-40 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70" />
                   <button onClick={() => { setSearch(""); setSearchOpen(false) }} className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none">✕</button>
                 </div>
               ) : (
@@ -238,7 +238,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
           <div className="flex md:hidden h-9 items-center gap-1.5 px-3 border-t border-border">
             {searchOpen ? (
               <div className="flex items-center gap-1.5 flex-1">
-                <input ref={searchRef} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök märke eller modell..." className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70" />
+                <input ref={searchRef} type="search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Escape" && (setSearch(""), setSearchOpen(false))} placeholder="Sök märke eller modell..." className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/70" />
                 <button onClick={() => { setSearch(""); setSearchOpen(false) }} className="text-muted-foreground hover:text-foreground transition-colors text-xs leading-none">✕</button>
               </div>
             ) : (
