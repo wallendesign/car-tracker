@@ -29,6 +29,7 @@ export function AppShell() {
   const [refreshProgress, setRefreshProgress] = useState({ current: 0, total: 0 })
   const [addCarOpen, setAddCarOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState<{ carId: number; action: "refresh" | "edit" } | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 })
   const isMobile = useIsMobile()
@@ -81,6 +82,20 @@ export function AppShell() {
   function handleEdit(car: CarRecord) {
     setCars((prev) => prev.map((c) => (c.id === car.id ? car : c)))
     setSelected((prev) => (prev?.id === car.id ? car : prev))
+  }
+
+  function handleRowRefresh(car: CarRecord) {
+    setSelected(car)
+    setPendingAction({ carId: car.id!, action: "refresh" })
+  }
+
+  function handleRowEdit(car: CarRecord) {
+    setSelected(car)
+    setPendingAction({ carId: car.id!, action: "edit" })
+  }
+
+  function handleRowDelete(car: CarRecord) {
+    handleDelete(car.id!)
   }
 
   async function handleCheckSoldStatus() {
@@ -198,7 +213,14 @@ export function AppShell() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <CarList cars={cars} selectedId={selected?.id} onSelect={setSelected} />
+          <CarList
+              cars={cars}
+              selectedId={selected?.id}
+              onSelect={setSelected}
+              onRowRefresh={handleRowRefresh}
+              onRowEdit={handleRowEdit}
+              onRowDelete={handleRowDelete}
+            />
         </div>
       </div>
 
@@ -215,6 +237,8 @@ export function AppShell() {
             onSummaryGenerated={handleSummaryGenerated}
             onEdit={handleEdit}
             onClose={() => setSelected(null)}
+            pendingAction={pendingAction}
+            onPendingActionConsumed={() => setPendingAction(null)}
           />
         </div>
       </div>
@@ -281,6 +305,8 @@ export function AppShell() {
                 onSummaryGenerated={handleSummaryGenerated}
                 onEdit={handleEdit}
                 onClose={() => setSelected(null)}
+                pendingAction={pendingAction}
+                onPendingActionConsumed={() => setPendingAction(null)}
               />
             </div>
           </div>

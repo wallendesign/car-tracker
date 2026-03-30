@@ -173,6 +173,8 @@ interface CarPanelProps {
   onSummaryGenerated: (id: number, fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">) => void
   onEdit: (car: CarRecord) => void
   onClose: () => void
+  pendingAction?: { carId: number; action: "refresh" | "edit" } | null
+  onPendingActionConsumed?: () => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -187,6 +189,8 @@ export function CarPanel({
   onSummaryGenerated,
   onEdit,
   onClose,
+  pendingAction,
+  onPendingActionConsumed,
 }: CarPanelProps) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
@@ -233,6 +237,28 @@ export function CarPanel({
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
   }, [car, confirmDelete, isEditing, statusMenuOpen, panelMenuOpen, onClose])
+
+  // Handle pending actions triggered from outside (e.g., row context menu)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!pendingAction || car?.id !== pendingAction.carId) return
+    onPendingActionConsumed?.()
+    if (pendingAction.action === "edit") {
+      setEditDraft({
+        make: car.make,
+        model: car.model,
+        year: car.year,
+        price: car.price,
+        mileage: car.mileage,
+        horsepower: car.horsepower,
+        location: car.location,
+      })
+      setIsEditing(true)
+    } else if (pendingAction.action === "refresh") {
+      handleRefresh()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAction, car?.id])
 
   if (!car) {
     return (
@@ -442,7 +468,10 @@ export function CarPanel({
         )}
 
         {/* ── Scrollable body ── */}
-        <div className="flex flex-col gap-6 p-6">
+        <div className={cn(
+          "flex flex-col gap-6 p-6 transition-opacity duration-300",
+          (refreshStep !== "idle" && refreshStep !== "error") || generating ? "opacity-40 pointer-events-none" : ""
+        )}>
 
           {/* Photo */}
           {car.photoUrl ? (

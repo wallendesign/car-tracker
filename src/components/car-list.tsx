@@ -72,6 +72,9 @@ interface CarListProps {
   cars: CarRecord[]
   selectedId?: number | null
   onSelect: (car: CarRecord | null) => void
+  onRowRefresh?: (car: CarRecord) => void
+  onRowEdit?: (car: CarRecord) => void
+  onRowDelete?: (car: CarRecord) => void
 }
 
 function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -82,7 +85,7 @@ function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
 const rangeInputClass =
   "w-20 bg-transparent border border-border rounded px-2 py-0.5 text-xs outline-none focus:border-foreground/40 placeholder:text-muted-foreground/50 tabular-nums"
 
-export function CarList({ cars, selectedId, onSelect }: CarListProps) {
+export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, onRowDelete }: CarListProps) {
   const [sortCol, setSortCol] = useState<SortCol | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [statusFilter, setStatusFilter] = useState<CarStatus | "all">("all")
@@ -98,11 +101,28 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [filterPos, setFilterPos] = useState({ top: 0, right: 0 })
+  const [openRowMenuId, setOpenRowMenuId] = useState<number | null>(null)
+  const [rowMenuPos, setRowMenuPos] = useState({ top: 0, right: 0 })
+  const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<number | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus()
   }, [searchOpen])
+
+  useEffect(() => {
+    if (openRowMenuId !== null && !cars.find((c) => c.id === openRowMenuId)) {
+      setOpenRowMenuId(null)
+      setConfirmDeleteRowId(null)
+    }
+  }, [cars, openRowMenuId])
+
+  function openRowMenu(car: CarRecord, el: HTMLElement) {
+    const rect = el.getBoundingClientRect()
+    setRowMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    setOpenRowMenuId(car.id ?? null)
+    setConfirmDeleteRowId(null)
+  }
 
   function openFilters(el: HTMLElement) {
     const rect = el.getBoundingClientRect()
@@ -292,6 +312,62 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
             </>
           )}
 
+        {openRowMenuId !== null && (() => {
+          const menuCar = cars.find((c) => c.id === openRowMenuId)
+          if (!menuCar) return null
+          return (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => { setOpenRowMenuId(null); setConfirmDeleteRowId(null) }} />
+              <div
+                className="fixed z-50 w-44 rounded-md border border-border bg-background shadow-md py-1 text-sm"
+                style={{ top: rowMenuPos.top, right: rowMenuPos.right }}
+              >
+                {confirmDeleteRowId === menuCar.id ? (
+                  <div className="px-4 py-2 flex flex-col gap-2">
+                    <span className="text-xs text-destructive">Är du säker?</span>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { onRowDelete?.(menuCar); setOpenRowMenuId(null); setConfirmDeleteRowId(null) }}
+                        className="text-xs text-destructive hover:underline"
+                      >
+                        Ta bort
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteRowId(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Avbryt
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setOpenRowMenuId(null); onRowRefresh?.(menuCar) }}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors"
+                    >
+                      Uppdatera
+                    </button>
+                    <button
+                      onClick={() => { setOpenRowMenuId(null); onRowEdit?.(menuCar) }}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors"
+                    >
+                      Redigera
+                    </button>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      onClick={() => setConfirmDeleteRowId(menuCar.id!)}
+                      className="w-full text-left px-4 py-2 hover:bg-accent transition-colors text-destructive"
+                    >
+                      Ta bort bil
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )
+        })()}
+
         {displayed.length === 0 ? (
           <div className="px-4 py-6 text-xs text-muted-foreground">
             {cars.length === 0
@@ -319,7 +395,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                   Pris <SortIndicator active={sortCol === "price"} dir={sortDir} />
                 </th>
                 <th className="hidden md:table-cell py-2 px-3 font-normal text-left">Status</th>
-                <th className="py-2 px-2 font-normal w-8" />
+                <th className="py-2 px-2 font-normal w-16" />
               </tr>
             </thead>
             <tbody>
@@ -333,7 +409,7 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                   <tr
                     key={car.id}
                     onClick={() => onSelect(car.id === selectedId ? null : car)}
-                    className={`border-b border-border cursor-pointer transition-colors ${
+                    className={`group border-b border-border cursor-pointer transition-colors ${
                       car.id === selectedId ? "bg-accent" : "hover:bg-accent/50"
                     }`}
                   >
@@ -406,20 +482,29 @@ export function CarList({ cars, selectedId, onSelect }: CarListProps) {
                         </span>
                       )}
                     </td>
-                    {/* External link */}
-                    <td className="py-2 px-2 text-right">
-                      <a
-                        href={car.listingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        aria-label="Öppna annons"
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
-                        </svg>
-                      </a>
+                    {/* Actions */}
+                    <td className="py-2 pl-1 pr-2">
+                      <div className={`flex items-center justify-end gap-0.5 transition-opacity ${openRowMenuId === car.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openRowMenu(car, e.currentTarget) }}
+                          className="inline-flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-[14px] leading-none"
+                          aria-label="Åtgärder"
+                        >
+                          ···
+                        </button>
+                        <a
+                          href={car.listingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          aria-label="Öppna annons"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
+                          </svg>
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 )
