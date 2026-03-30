@@ -17,11 +17,14 @@ export async function PATCH(
 
   // AI summary update
   if ("aiModelOverview" in body) {
+    const tldr = body.aiTldr ? JSON.stringify(body.aiTldr) : null
     await sql`
       UPDATE cars SET
         ai_model_overview = ${body.aiModelOverview ?? null},
         ai_common_issues = ${body.aiCommonIssues ?? null},
-        ai_value_assessment = ${body.aiValueAssessment ?? null}
+        ai_value_assessment = ${body.aiValueAssessment ?? null},
+        ai_score = ${body.aiScore ?? null},
+        ai_tldr = ${tldr}
       WHERE id = ${id}
     `
     return NextResponse.json({ ok: true })
@@ -29,6 +32,7 @@ export async function PATCH(
 
   // Full data update (from inline edit or refresh)
   const eq = body.equipment ? JSON.stringify(body.equipment) : null
+  const tldr = body.aiTldr ? JSON.stringify(body.aiTldr) : null
   await sql`
     UPDATE cars SET
       listing_url = ${body.listingUrl},
@@ -53,7 +57,9 @@ export async function PATCH(
       equipment = ${eq},
       ai_model_overview = ${body.aiModelOverview ?? null},
       ai_common_issues = ${body.aiCommonIssues ?? null},
-      ai_value_assessment = ${body.aiValueAssessment ?? null}
+      ai_value_assessment = ${body.aiValueAssessment ?? null},
+      ai_score = ${body.aiScore ?? null},
+      ai_tldr = ${tldr}
     WHERE id = ${id}
   `
   return NextResponse.json({ ok: true })

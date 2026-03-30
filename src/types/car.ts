@@ -5,6 +5,13 @@ export type CarStatus = "interested" | "contacted" | "test_driven" | "pass" | "s
 
 export type Marketplace = "blocket" | "bytbil" | "autouncle"
 
+export interface AiTldr {
+  drawback: string[]      // 1–2 bullet points
+  risk: string
+  standout: string
+  recommendation: string
+}
+
 export interface CarRecord {
   id?: number              // Dexie auto-increment primary key — optional on insert
   // Source
@@ -33,6 +40,8 @@ export interface CarRecord {
   aiModelOverview: string | null    // AI-generated general model info
   aiCommonIssues: string | null     // AI-generated known issues / things to inspect
   aiValueAssessment: string | null  // AI-generated price fairness verdict
+  aiScore: number | null            // AI composite score 0–100
+  aiTldr: AiTldr | null             // AI TL;DR callout
   // Management
   status: CarStatus        // User-assigned research status
   createdAt: number        // Unix timestamp ms (Date.now()) — used for sort order

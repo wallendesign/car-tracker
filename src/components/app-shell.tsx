@@ -73,7 +73,7 @@ export function AppShell() {
 
   function handleSummaryGenerated(
     id: number,
-    fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">
+    fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment" | "aiScore" | "aiTldr">
   ) {
     setCars((prev) => prev.map((c) => (c.id === id ? { ...c, ...fields } : c)))
     setSelected((prev) => (prev?.id === id ? { ...prev, ...fields } : prev))
@@ -131,7 +131,8 @@ export function AppShell() {
 
     for (let i = 0; i < snapshot.length; i++) {
       setRefreshProgress({ current: i + 1, total: snapshot.length })
-      const result = await refreshCar(snapshot[i])
+      const otherCars = snapshot.filter((_, j) => j !== i)
+      const result = await refreshCar(snapshot[i], undefined, otherCars)
       setCars((prev) => prev.map((c) => (c.id === result.car.id ? result.car : c)))
       setSelected((prev) => (prev?.id === result.car.id ? result.car : prev))
     }

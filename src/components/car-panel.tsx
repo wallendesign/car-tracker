@@ -12,6 +12,7 @@ import {
   gradeMileage,
   gradePrice,
   gradeListingAge,
+  gradeScore,
   type Grade,
   type GradeLevel,
 } from "@/lib/grade-metrics"
@@ -170,7 +171,7 @@ interface CarPanelProps {
   onStatusChange: (id: number, status: CarStatus) => void
   onDelete: (id: number) => void
   onRefresh: (car: CarRecord) => void
-  onSummaryGenerated: (id: number, fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">) => void
+  onSummaryGenerated: (id: number, fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment" | "aiScore" | "aiTldr">) => void
   onEdit: (car: CarRecord) => void
   onClose: () => void
   pendingAction?: { carId: number; action: "refresh" | "edit" } | null
@@ -285,7 +286,8 @@ export function CarPanel({
   async function handleRefresh() {
     if (!car?.id) return
     setRefreshError(null)
-    const result = await refreshCar(car, setRefreshStep)
+    const otherCars = (allCars ?? []).filter(c => c.id !== car.id)
+    const result = await refreshCar(car, setRefreshStep, otherCars)
     if (result.status === "error") {
       setRefreshError(result.error)
       setRefreshStep("error")
@@ -300,6 +302,7 @@ export function CarPanel({
     setGenerating(true)
     setGenError(null)
 
+    const otherCars = (allCars ?? []).filter(c => c.id !== car.id)
     const res = await fetch("/api/summarize-car", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -314,6 +317,13 @@ export function CarPanel({
         transmission: car.transmission,
         driveType: car.driveType,
         equipment: car.equipment,
+        otherCars: otherCars.map(c => ({
+          make: c.make,
+          model: c.model,
+          year: c.year,
+          price: c.price,
+          mileage: c.mileage,
+        })),
       }),
     })
 
@@ -326,6 +336,8 @@ export function CarPanel({
       aiModelOverview: data.aiModelOverview,
       aiCommonIssues: data.aiCommonIssues,
       aiValueAssessment: data.aiValueAssessment,
+      aiScore: data.aiScore ?? null,
+      aiTldr: data.aiTldr ?? null,
     }
 
     await updateCarAISummary(car.id, fields)
@@ -373,6 +385,8 @@ export function CarPanel({
       aiModelOverview: updated.aiModelOverview,
       aiCommonIssues: updated.aiCommonIssues,
       aiValueAssessment: updated.aiValueAssessment,
+      aiScore: updated.aiScore,
+      aiTldr: updated.aiTldr,
     })
     onEdit(updated)
     setIsEditing(false)
@@ -396,6 +410,7 @@ export function CarPanel({
   const mileageGrade = car.mileage != null ? gradeMileage(car.mileage, car.year, allCarsCtx) : null
   const hpGrade = car.horsepower != null ? gradeHorsepower(car.horsepower, allCarsCtx) : null
   const listingAgeGrade = gradeListingAge(car.listingDate ?? null)
+  const scoreGrade = gradeScore(car.aiScore)
 
   const hasSummary = car.aiModelOverview || car.aiCommonIssues || car.aiValueAssessment
   const inputClass = "w-full bg-muted rounded px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-foreground/30"
@@ -573,6 +588,15 @@ export function CarPanel({
 
           {/* Main stats grid */}
           <div className="grid grid-cols-2 gap-3">
+            {scoreGrade && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Score</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium">{car.aiScore}/100</span>
+                  <GradePill grade={scoreGrade} />
+                </div>
+              </div>
+            )}
             {car.price != null && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-muted-foreground">Pris</span>
@@ -625,6 +649,40 @@ export function CarPanel({
           </div>
 
           <Separator />
+
+          {/* TL;DR callout */}
+          {car.aiTldr && (
+            <div className="bg-muted/50 rounded-lg px-4 py-3 flex flex-col gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">TL;DR</span>
+              <div className="flex flex-col gap-1.5 text-sm">
+                {car.aiTldr.drawback.length > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-muted-foreground shrink-0 w-24 text-xs pt-px">Nackdel</span>
+                    <ul className="flex flex-col gap-0.5">
+                      {car.aiTldr.drawback.map((d, i) => (
+                        <li key={i} className="flex gap-1.5">
+                          <span className="text-muted-foreground shrink-0 mt-px">•</span>
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground shrink-0 w-24 text-xs pt-px">Risk</span>
+                  <span>{car.aiTldr.risk}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground shrink-0 w-24 text-xs pt-px">Sticker ut</span>
+                  <span>{car.aiTldr.standout}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground shrink-0 w-24 text-xs pt-px">Rekommendation</span>
+                  <span>{car.aiTldr.recommendation}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* AI Summary */}
           <div className="flex flex-col gap-4">

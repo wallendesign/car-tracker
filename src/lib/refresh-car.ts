@@ -8,7 +8,7 @@ export type RefreshResult =
 
 type StepCallback = (step: "fetching" | "analyzing" | "summarizing") => void
 
-export async function refreshCar(car: CarRecord, onStep?: StepCallback): Promise<RefreshResult> {
+export async function refreshCar(car: CarRecord, onStep?: StepCallback, otherCars?: CarRecord[]): Promise<RefreshResult> {
   const id = car.id!
 
   onStep?.("fetching")
@@ -49,6 +49,13 @@ export async function refreshCar(car: CarRecord, onStep?: StepCallback): Promise
       transmission: analyzeData.transmission,
       driveType: analyzeData.driveType,
       equipment: analyzeData.equipment,
+      otherCars: otherCars?.map(c => ({
+        make: c.make,
+        model: c.model,
+        year: c.year,
+        price: c.price,
+        mileage: c.mileage,
+      })),
     }),
   })
   const summaryData = await summaryRes.json()
@@ -77,6 +84,8 @@ export async function refreshCar(car: CarRecord, onStep?: StepCallback): Promise
     aiModelOverview: summaryRes.ok ? summaryData.aiModelOverview : car.aiModelOverview,
     aiCommonIssues: summaryRes.ok ? summaryData.aiCommonIssues : car.aiCommonIssues,
     aiValueAssessment: summaryRes.ok ? summaryData.aiValueAssessment : car.aiValueAssessment,
+    aiScore: summaryRes.ok ? (summaryData.aiScore ?? null) : car.aiScore,
+    aiTldr: summaryRes.ok ? (summaryData.aiTldr ?? null) : car.aiTldr,
   }
 
   await updateCarData(id, refreshed)

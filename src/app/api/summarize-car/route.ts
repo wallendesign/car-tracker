@@ -13,14 +13,49 @@ const SummarySchema = z.object({
   aiValueAssessment: z.string().describe(
     "1-2 sentence direct verdict on whether the price is fair given mileage and Swedish market, then 2-3 bullet points each starting with '• ' with specific supporting context: typical market price range, mileage assessment, and one key value factor. No other formatting."
   ),
+  aiScore: z.number().int().min(0).max(100).describe(
+    "Composite score 0–100 based on: value for money (30%), reliability/risk (25%), condition indicators (mileage/age, 25%), and overall desirability (20%). Higher is better."
+  ),
+  aiTldr: z.object({
+    drawback: z.array(z.string()).describe("1–2 short bullet strings listing the main drawbacks of this specific car"),
+    risk: z.string().describe("One sentence about the biggest risk or concern with this car"),
+    standout: z.string().describe("One sentence about what makes this car stand out positively"),
+    recommendation: z.string().describe("One direct sentence: should the buyer pursue this car or not, and why"),
+  }),
 })
 
+interface OtherCar {
+  make: string
+  model: string
+  year: number
+  price: number | null
+  mileage: number | null
+}
+
 export async function POST(req: NextRequest) {
-  const { make, model, year, price, mileage, fuelType, transmission, driveType, horsepower, equipment } = await req.json()
+  const { make, model, year, price, mileage, fuelType, transmission, driveType, horsepower, equipment, otherCars } = await req.json() as {
+    make: string
+    model: string
+    year: number
+    price: number | null
+    mileage: number | null
+    fuelType?: string | null
+    transmission?: string | null
+    driveType?: string | null
+    horsepower?: number | null
+    equipment?: string[] | null
+    otherCars?: OtherCar[]
+  }
 
   if (!make || !model || !year) {
     return NextResponse.json({ error: "Missing car data" }, { status: 400 })
   }
+
+  const comparisonContext = otherCars && otherCars.length > 0
+    ? `\nJämförelsebilar i listan:\n${otherCars.map(c =>
+        `- ${c.year} ${c.make} ${c.model}${c.price != null ? `, ${c.price.toLocaleString("sv-SE")} kr` : ""}${c.mileage != null ? `, ${c.mileage.toLocaleString("sv-SE")} mil` : ""}`
+      ).join("\n")}\n`
+    : ""
 
   try {
     const { object } = await generateObject({
@@ -36,9 +71,11 @@ ${fuelType ? `Drivmedel: ${fuelType}` : ""}
 ${transmission ? `Växellåda: ${transmission}` : ""}
 ${driveType ? `Drivhjul: ${driveType}` : ""}
 ${equipment?.length ? `Utrustning: ${equipment.join(", ")}` : ""}
-
+${comparisonContext}
 Skriv på svenska. Var kortfattad och direkt — köparen vill snabbt scanna nyckelpunkter, inte läsa långa stycken.
-Varje fält ska följa exakt detta format: en kort inledning, sedan punkter som börjar med "• ".`,
+Varje fält ska följa exakt detta format: en kort inledning, sedan punkter som börjar med "• ".
+För aiScore: sätt ett heltal 0–100 baserat på värde för pengarna, tillförlitlighet, skick och önskvärdhet.
+För aiTldr: ge korta, direkta svar om nackdelar, risk, vad som sticker ut och rekommendation.`,
     })
 
     return NextResponse.json(object)

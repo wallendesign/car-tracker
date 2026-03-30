@@ -51,6 +51,8 @@ export async function addCarFromUrl(url: string): Promise<AddCarResult> {
     aiModelOverview: null,
     aiCommonIssues: null,
     aiValueAssessment: null,
+    aiScore: null,
+    aiTldr: null,
     status: "interested",
     createdAt: Date.now(),
   }

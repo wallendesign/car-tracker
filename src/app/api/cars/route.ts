@@ -29,12 +29,16 @@ async function ensureTable() {
       ai_model_overview TEXT,
       ai_common_issues TEXT,
       ai_value_assessment TEXT,
+      ai_score INTEGER,
+      ai_tldr TEXT,
       status TEXT NOT NULL DEFAULT 'interested',
       created_at BIGINT NOT NULL
     )
   `
-  // Migration: add listing_date column to existing tables
+  // Migrations: add columns to existing tables
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS listing_date TEXT`
+  await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS ai_score INTEGER`
+  await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS ai_tldr TEXT`
 }
 
 function rowToCar(row: Record<string, unknown>): CarRecord {
@@ -63,6 +67,8 @@ function rowToCar(row: Record<string, unknown>): CarRecord {
     aiModelOverview: row.ai_model_overview as string | null,
     aiCommonIssues: row.ai_common_issues as string | null,
     aiValueAssessment: row.ai_value_assessment as string | null,
+    aiScore: row.ai_score != null ? Number(row.ai_score) : null,
+    aiTldr: row.ai_tldr ? JSON.parse(row.ai_tldr as string) : null,
     status: row.status as CarRecord["status"],
     createdAt: Number(row.created_at),
   }
@@ -83,19 +89,22 @@ export async function POST(req: NextRequest) {
   await ensureTable()
   const car: Omit<CarRecord, "id"> = await req.json()
   const eq = car.equipment ? JSON.stringify(car.equipment) : null
+  const tldr = car.aiTldr ? JSON.stringify(car.aiTldr) : null
 
   const { rows } = await sql`
     INSERT INTO cars (
       listing_url, marketplace, make, model, year, price, mileage, horsepower,
       location, photo_url, body_type, fuel_type, transmission, drive_type,
       engine_volume, color, seats, registration_date, listing_date, equipment,
-      ai_model_overview, ai_common_issues, ai_value_assessment, status, created_at
+      ai_model_overview, ai_common_issues, ai_value_assessment, ai_score, ai_tldr,
+      status, created_at
     ) VALUES (
       ${car.listingUrl}, ${car.marketplace}, ${car.make}, ${car.model}, ${car.year},
       ${car.price}, ${car.mileage}, ${car.horsepower}, ${car.location}, ${car.photoUrl},
       ${car.bodyType}, ${car.fuelType}, ${car.transmission}, ${car.driveType},
       ${car.engineVolume}, ${car.color}, ${car.seats}, ${car.registrationDate},
       ${car.listingDate}, ${eq}, ${car.aiModelOverview}, ${car.aiCommonIssues}, ${car.aiValueAssessment},
+      ${car.aiScore ?? null}, ${tldr},
       ${car.status}, ${car.createdAt}
     )
     RETURNING *

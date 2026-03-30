@@ -8,6 +8,7 @@ import {
   gradeHorsepower,
   gradeMileage,
   gradePrice,
+  gradeScore,
   type Grade,
   type GradeLevel,
 } from "@/lib/grade-metrics"
@@ -65,7 +66,7 @@ function GradePill({ grade, value }: { grade: Grade; value: string }) {
   )
 }
 
-type SortCol = "model" | "year" | "hp" | "mileage" | "price"
+type SortCol = "model" | "year" | "hp" | "mileage" | "price" | "score"
 type SortDir = "asc" | "desc"
 
 interface CarListProps {
@@ -177,6 +178,7 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
         if (sortCol === "hp") { av = a.horsepower ?? null; bv = b.horsepower ?? null }
         if (sortCol === "mileage") { av = a.mileage ?? null; bv = b.mileage ?? null }
         if (sortCol === "price") { av = a.price ?? null; bv = b.price ?? null }
+        if (sortCol === "score") { av = a.aiScore ?? null; bv = b.aiScore ?? null }
 
         if (av === null && bv === null) return 0
         if (av === null) return 1
@@ -391,8 +393,11 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
                 <th onClick={() => handleSortClick("mileage")} className="group hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   Miltal <SortIndicator active={sortCol === "mileage"} dir={sortDir} />
                 </th>
-                <th {...thProps("price")}>
+                <th onClick={() => handleSortClick("price")} className="group hidden md:table-cell py-2 px-3 font-normal cursor-pointer select-none hover:text-foreground transition-colors text-right">
                   Pris <SortIndicator active={sortCol === "price"} dir={sortDir} />
+                </th>
+                <th {...thProps("score")}>
+                  Score <SortIndicator active={sortCol === "score"} dir={sortDir} />
                 </th>
                 <th className="hidden md:table-cell py-2 px-3 font-normal text-left">Status</th>
                 <th className="py-2 px-2 font-normal w-16" />
@@ -404,6 +409,7 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
                 const hpGrade = gradeHorsepower(car.horsepower, cars)
                 const mileageGrade = gradeMileage(car.mileage, car.year, cars)
                 const priceGrade = gradePrice(car.price, car.year, cars)
+                const scoreGrade = gradeScore(car.aiScore)
 
                 return (
                   <tr
@@ -440,6 +446,9 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
                         {mileageGrade
                           ? <GradePill grade={mileageGrade} value={`${car.mileage!.toLocaleString("sv-SE")} mil`} />
                           : car.mileage != null ? <span className="text-muted-foreground text-[11px] tabular-nums">{car.mileage.toLocaleString("sv-SE")} mil</span> : null}
+                        {priceGrade
+                          ? <GradePill grade={priceGrade} value={`${car.price!.toLocaleString("sv-SE")} kr`} />
+                          : car.price != null ? <span className="text-muted-foreground text-[11px] tabular-nums">{car.price.toLocaleString("sv-SE")} kr</span> : null}
                       </div>
                     </td>
 
@@ -465,9 +474,16 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
                     </td>
 
                     {/* Price */}
-                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                    <td className="hidden md:table-cell py-2 px-3 text-right whitespace-nowrap">
                       {priceGrade
                         ? <GradePill grade={priceGrade} value={`${car.price!.toLocaleString("sv-SE")} kr`} />
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+
+                    {/* Score */}
+                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                      {scoreGrade
+                        ? <GradePill grade={scoreGrade} value={String(car.aiScore)} />
                         : <span className="text-muted-foreground">—</span>}
                     </td>
 

@@ -33,7 +33,7 @@ export async function updateCarStatus(
 
 export async function updateCarAISummary(
   id: number,
-  fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment">
+  fields: Pick<CarRecord, "aiModelOverview" | "aiCommonIssues" | "aiValueAssessment" | "aiScore" | "aiTldr">
 ): Promise<void> {
   await fetch(`/api/cars/${id}`, {
     method: "PATCH",

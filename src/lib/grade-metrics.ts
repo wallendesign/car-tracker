@@ -127,6 +127,21 @@ export function gradeListingAge(listingDate: string | null): Grade | null {
   return { level, tooltip: `${GRADE_WORD[level]} – Uppdaterad ${ageStr}. ${desc}` }
 }
 
+export function gradeScore(score: number | null | undefined): Grade | null {
+  if (score == null) return null
+
+  let level: GradeLevel
+  let desc: string
+
+  if (score >= 80) { level = "great"; desc = "Utmärkt totalpoäng – en mycket stark kandidat." }
+  else if (score >= 65) { level = "good"; desc = "Bra poäng – värd att prioritera." }
+  else if (score >= 45) { level = "avg"; desc = "OK poäng – normal kandidat för marknaden." }
+  else if (score >= 25) { level = "poor"; desc = "Svagare poäng – noggrant övervägande behövs." }
+  else { level = "bad"; desc = "Låg poäng – tydliga nackdelar identifierade." }
+
+  return { level, tooltip: `${GRADE_WORD[level]} – ${score}/100. ${desc}` }
+}
+
 export function gradePrice(
   price: number | null | undefined,
   year: number | null | undefined,
@@ -141,13 +156,13 @@ export function gradePrice(
 
   if (year != null) {
     const age = new Date().getFullYear() - year
-    const remainingYears = Math.max(30 - age, 1)
+    const remainingYears = Math.max(20 - age, 1)
     const costPerYear = Math.round(price / remainingYears)
 
     if (costPerYear < 5000) { marketLevel = "great"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – mycket bra värde för pengarna.` }
-    else if (costPerYear < 12000) { marketLevel = "good"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – bra värde.` }
-    else if (costPerYear < 18000) { marketLevel = "avg"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – normalt för marknaden.` }
-    else if (costPerYear < 25000) { marketLevel = "poor"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – dyrare relativt bilens återstående livslängd.` }
+    else if (costPerYear < 10000) { marketLevel = "good"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – bra värde.` }
+    else if (costPerYear < 15000) { marketLevel = "avg"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – normalt för marknaden.` }
+    else if (costPerYear < 20000) { marketLevel = "poor"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – dyrare relativt bilens återstående livslängd.` }
     else { marketLevel = "bad"; marketDesc = `${costPerYear.toLocaleString("sv-SE")} kr/återstående år – högt pris för bilens ålder.` }
   }
 

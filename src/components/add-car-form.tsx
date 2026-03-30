@@ -106,6 +106,8 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
       aiModelOverview: null,
       aiCommonIssues: null,
       aiValueAssessment: null,
+      aiScore: null,
+      aiTldr: null,
       status: "interested",
       createdAt: Date.now(),
     }
@@ -130,6 +132,8 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
         aiModelOverview: summaryData.aiModelOverview,
         aiCommonIssues: summaryData.aiCommonIssues,
         aiValueAssessment: summaryData.aiValueAssessment,
+        aiScore: summaryData.aiScore ?? null,
+        aiTldr: summaryData.aiTldr ?? null,
       }
       await updateCarAISummary(id, fields)
       onAdd({ ...savedCar, ...fields })
