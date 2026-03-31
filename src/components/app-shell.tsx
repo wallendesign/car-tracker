@@ -115,6 +115,11 @@ export function AppShell({ projectId, projectName, projectSlug: _projectSlug }: 
     setAddCarOpen(false)
   }
 
+  function handleBulkProcessingStart(items: { url: string; tempId: string }[]) {
+    setPendingRows(prev => [...prev, ...items])
+    setAddCarOpen(false)
+  }
+
   function handleProcessingError(tempId: string) {
     setPendingRows(prev => prev.filter(r => r.tempId !== tempId))
   }
@@ -309,6 +314,7 @@ export function AppShell({ projectId, projectName, projectSlug: _projectSlug }: 
                 onClose={() => setAddCarOpen(false)}
                 onProcessing={handleProcessing}
                 onProcessingError={handleProcessingError}
+                onBulkProcessingStart={handleBulkProcessingStart}
               />
             </div>
           </div>

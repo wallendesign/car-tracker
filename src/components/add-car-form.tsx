@@ -10,6 +10,7 @@ interface AddCarFormProps {
   onClose?: () => void
   onProcessing?: (url: string, tempId: string) => void
   onProcessingError?: (tempId: string) => void
+  onBulkProcessingStart?: (items: { url: string; tempId: string }[]) => void
 }
 
 type Step =
@@ -50,7 +51,7 @@ function validateCar(data: { year: number; price: number | null; mileage: number
   return warnings
 }
 
-export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessingError }: AddCarFormProps) {
+export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessingError, onBulkProcessingStart }: AddCarFormProps) {
   const [url, setUrl] = useState("")
   const [step, setStep] = useState<Step>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -160,29 +161,36 @@ export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessi
 
   async function handleImportSearch() {
     const urls = searchUrls
-    setStep("search-importing")
-    setSearchProgress({ done: 0, total: urls.length })
 
-    let added = 0
-    for (let i = 0; i < urls.length; i++) {
-      setSearchProgress({ done: i, total: urls.length })
-      const listingUrl = urls[i]
-
-      // Skip duplicates
+    // Duplicate-check all URLs upfront, build list of new ones with tempIds
+    const items: { url: string; tempId: string }[] = []
+    for (const listingUrl of urls) {
       const existing = await getCarByUrl(listingUrl, projectId)
-      if (existing) continue
-
-      try {
-        const car = await addSingleListing(listingUrl)
-        if (car) added++
-      } catch { /* skip failed listings silently */ }
+      if (!existing) {
+        items.push({ url: listingUrl, tempId: `temp-${Date.now()}-${Math.random()}` })
+      }
     }
 
-    setSearchProgress(null)
-    setSearchUrls([])
+    // Reset form and close modal immediately, adding all skeleton rows at once
     setUrl("")
+    setSearchUrls([])
+    setSearchProgress(null)
     setStep("idle")
-    if (added > 0) onClose?.()
+    if (items.length > 0) {
+      onBulkProcessingStart?.(items)
+    } else {
+      onClose?.()
+      return
+    }
+
+    // Process each listing sequentially — skeleton row is removed when onAdd fires
+    for (const { url: listingUrl, tempId } of items) {
+      try {
+        await addSingleListing(listingUrl, tempId)
+      } catch {
+        onProcessingError?.(tempId)
+      }
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
