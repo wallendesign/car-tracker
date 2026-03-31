@@ -76,6 +76,8 @@ interface CarListProps {
   onRowRefresh?: (car: CarRecord) => void
   onRowEdit?: (car: CarRecord) => void
   onRowDelete?: (car: CarRecord) => void
+  pendingRows?: { tempId: string; url: string }[]
+  refreshingId?: number | null
 }
 
 function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -86,7 +88,7 @@ function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
 const rangeInputClass =
   "w-20 bg-transparent border border-border rounded px-2 py-0.5 text-xs outline-none focus:border-foreground/40 placeholder:text-muted-foreground/50 tabular-nums"
 
-export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, onRowDelete }: CarListProps) {
+export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, onRowDelete, pendingRows, refreshingId }: CarListProps) {
   const [sortCol, setSortCol] = useState<SortCol | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [statusFilter, setStatusFilter] = useState<CarStatus | "all">("all")
@@ -404,6 +406,37 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
               </tr>
             </thead>
             <tbody>
+              {(pendingRows ?? []).map((row) => (
+                <tr key={row.tempId} className="border-b border-border">
+                  <td className="py-2 pl-3 pr-1">
+                    <div className="w-14 h-10 rounded bg-muted animate-pulse" />
+                  </td>
+                  <td className="py-2 pl-1 pr-3">
+                    <div className="h-4 bg-muted rounded-full w-28 animate-pulse" />
+                    <div className="flex items-center gap-1.5 mt-1 md:hidden">
+                      <div className="h-5 bg-muted rounded-full w-10 animate-pulse" />
+                      <div className="h-5 bg-muted rounded-full w-14 animate-pulse" />
+                    </div>
+                  </td>
+                  <td className="hidden md:table-cell py-2 px-3 text-right">
+                    <div className="h-5 bg-muted rounded-full w-10 animate-pulse ml-auto" />
+                  </td>
+                  <td className="hidden md:table-cell py-2 px-3 text-right">
+                    <div className="h-5 bg-muted rounded-full w-10 animate-pulse ml-auto" />
+                  </td>
+                  <td className="hidden md:table-cell py-2 px-3 text-right">
+                    <div className="h-5 bg-muted rounded-full w-16 animate-pulse ml-auto" />
+                  </td>
+                  <td className="hidden md:table-cell py-2 px-3 text-right">
+                    <div className="h-5 bg-muted rounded-full w-20 animate-pulse ml-auto" />
+                  </td>
+                  <td className="py-2 px-3 text-right">
+                    <div className="h-5 bg-muted rounded-full w-8 animate-pulse ml-auto" />
+                  </td>
+                  <td className="hidden md:table-cell" />
+                  <td className="py-2 pl-1 pr-2" />
+                </tr>
+              ))}
               {displayed.map((car) => {
                 const yearGrade = gradeYear(car.year, cars)
                 const hpGrade = gradeHorsepower(car.horsepower, cars)
@@ -416,7 +449,9 @@ export function CarList({ cars, selectedId, onSelect, onRowRefresh, onRowEdit, o
                     key={car.id}
                     onClick={() => onSelect(car.id === selectedId ? null : car)}
                     className={`group border-b border-border cursor-pointer transition-colors ${
-                      car.id === selectedId ? "bg-accent" : "hover:bg-accent/50"
+                      car.id === refreshingId
+                        ? "animate-pulse opacity-60 pointer-events-none"
+                        : car.id === selectedId ? "bg-accent" : "hover:bg-accent/50"
                     }`}
                   >
                     {/* Thumbnail */}

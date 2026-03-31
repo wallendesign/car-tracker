@@ -7,6 +7,8 @@ import type { CarRecord } from "@/types/car"
 interface AddCarFormProps {
   onAdd: (car: CarRecord) => void
   onClose?: () => void
+  onProcessing?: (url: string, tempId: string) => void
+  onProcessingError?: (tempId: string) => void
 }
 
 type Step = "idle" | "fetching" | "analyzing" | "summarizing" | "error"
@@ -33,7 +35,7 @@ function validateCar(data: { year: number; price: number | null; mileage: number
   return warnings
 }
 
-export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
+export function AddCarForm({ onAdd, onClose, onProcessing, onProcessingError }: AddCarFormProps) {
   const [url, setUrl] = useState("")
   const [step, setStep] = useState<Step>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +55,8 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
       return
     }
 
+    const tempId = `temp-${Date.now()}`
+    onProcessing?.(url.trim(), tempId)
     setStep("fetching")
 
     const fetchRes = await fetch("/api/fetch-listing", {
@@ -61,7 +65,7 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
       body: JSON.stringify({ url: url.trim() }),
     })
     const fetchData = await fetchRes.json()
-    if (!fetchRes.ok) { setError(fetchData.error); setStep("error"); return }
+    if (!fetchRes.ok) { onProcessingError?.(tempId); setError(fetchData.error); setStep("error"); return }
 
     setStep("analyzing")
 
@@ -71,7 +75,7 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
       body: JSON.stringify({ html: fetchData.html, url: url.trim() }),
     })
     const analyzeData = await analyzeRes.json()
-    if (!analyzeRes.ok) { setError(analyzeData.error); setStep("error"); return }
+    if (!analyzeRes.ok) { onProcessingError?.(tempId); setError(analyzeData.error); setStep("error"); return }
 
     // Validation warnings (soft — car still saves)
     const w = validateCar({
@@ -115,7 +119,7 @@ export function AddCarForm({ onAdd, onClose }: AddCarFormProps) {
     const id = await saveCar(car)
     const savedCar = { ...car, id }
     onAdd(savedCar)
-    onClose?.()
+    if (!onProcessing) onClose?.()
     setUrl("")
     setStep("summarizing")
 

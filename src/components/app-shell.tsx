@@ -32,6 +32,8 @@ export function AppShell() {
   const [pendingAction, setPendingAction] = useState<{ carId: number; action: "refresh" | "edit" } | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 })
+  const [pendingRows, setPendingRows] = useState<{ tempId: string; url: string }[]>([])
+  const [refreshingId, setRefreshingId] = useState<number | null>(null)
   const isMobile = useIsMobile()
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function AppShell() {
       return exists ? prev.map((c) => (c.id === car.id ? car : c)) : [car, ...prev]
     })
     setSelected(car)
+    setPendingRows(prev => prev.filter(r => r.url !== car.listingUrl))
   }
 
   function handleStatusChange(id: number, status: CarStatus) {
@@ -98,6 +101,15 @@ export function AppShell() {
     handleDelete(car.id!)
   }
 
+  function handleProcessing(url: string, tempId: string) {
+    setPendingRows(prev => [...prev, { tempId, url }])
+    setAddCarOpen(false)
+  }
+
+  function handleProcessingError(tempId: string) {
+    setPendingRows(prev => prev.filter(r => r.tempId !== tempId))
+  }
+
   async function handleCheckSoldStatus() {
     const nonSold = cars.filter(c => c.status !== "sold")
     if (nonSold.length === 0) return
@@ -131,12 +143,14 @@ export function AppShell() {
 
     for (let i = 0; i < snapshot.length; i++) {
       setRefreshProgress({ current: i + 1, total: snapshot.length })
+      setRefreshingId(snapshot[i].id ?? null)
       const otherCars = snapshot.filter((_, j) => j !== i)
       const result = await refreshCar(snapshot[i], undefined, otherCars)
       setCars((prev) => prev.map((c) => (c.id === result.car.id ? result.car : c)))
       setSelected((prev) => (prev?.id === result.car.id ? result.car : prev))
     }
 
+    setRefreshingId(null)
     setRefreshingAll(false)
   }
 
@@ -221,6 +235,8 @@ export function AppShell() {
               onRowRefresh={handleRowRefresh}
               onRowEdit={handleRowEdit}
               onRowDelete={handleRowDelete}
+              pendingRows={pendingRows}
+              refreshingId={refreshingId}
             />
         </div>
       </div>
@@ -258,7 +274,7 @@ export function AppShell() {
               >✕</button>
             </div>
             <div className="p-4">
-              <AddCarForm onAdd={handleAdd} onClose={() => setAddCarOpen(false)} />
+              <AddCarForm onAdd={handleAdd} onClose={() => setAddCarOpen(false)} onProcessing={handleProcessing} onProcessingError={handleProcessingError} />
             </div>
           </div>
         </>
