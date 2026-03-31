@@ -4,7 +4,7 @@ import type { CarRecord } from "@/types/car"
 import { ensureProjectsTable } from "@/app/api/projects/route"
 
 async function ensureTable() {
-  // Projects table must exist first (it also handles car migration)
+  // Ensure projects table exists first
   await ensureProjectsTable()
 
   await sql`
@@ -45,6 +45,24 @@ async function ensureTable() {
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS ai_score INTEGER`
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS ai_tldr TEXT`
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS project_id INTEGER`
+
+  // Project migration: assign orphaned cars to a default project
+  // Must run AFTER project_id column exists on cars
+  const { rows: orphans } = await sql`SELECT COUNT(*) as cnt FROM cars WHERE project_id IS NULL`
+  if (Number(orphans[0].cnt) > 0) {
+    // Find or create the default migration project
+    let { rows: existing } = await sql`SELECT id FROM projects WHERE slug = 'bilsokning-2025' LIMIT 1`
+    if (existing.length === 0) {
+      const { rows: inserted } = await sql`
+        INSERT INTO projects (name, slug, created_at)
+        VALUES ('Bilsökning 2025', 'bilsokning-2025', ${Date.now()})
+        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+        RETURNING id
+      `
+      existing = inserted
+    }
+    await sql`UPDATE cars SET project_id = ${existing[0].id} WHERE project_id IS NULL`
+  }
 }
 
 function rowToCar(row: Record<string, unknown>): CarRecord {

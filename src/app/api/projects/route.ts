@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import type { ProjectRecord } from "@/types/project"
 import { toSlug, uniqueSlug } from "./slug-utils"
 
+// Only creates the projects table — does NOT touch cars (cars route owns migration)
 export async function ensureProjectsTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS projects (
@@ -12,27 +13,6 @@ export async function ensureProjectsTable() {
       created_at BIGINT NOT NULL
     )
   `
-
-  // Migration: if projects is empty but cars exist, create a default project
-  const { rows: pRows } = await sql`SELECT COUNT(*) as cnt FROM projects`
-  if (Number(pRows[0].cnt) === 0) {
-    try {
-      const { rows: cRows } = await sql`SELECT COUNT(*) as cnt FROM cars`
-      if (Number(cRows[0].cnt) > 0) {
-        const { rows: inserted } = await sql`
-          INSERT INTO projects (name, slug, created_at)
-          VALUES ('Bilsökning 2025', 'bilsokning-2025', ${Date.now()})
-          ON CONFLICT (slug) DO NOTHING
-          RETURNING id
-        `
-        if (inserted[0]) {
-          await sql`UPDATE cars SET project_id = ${inserted[0].id} WHERE project_id IS NULL`
-        }
-      }
-    } catch {
-      // cars table doesn't exist yet — will be created by /api/cars
-    }
-  }
 }
 
 function rowToProject(row: Record<string, unknown>): ProjectRecord {
