@@ -176,6 +176,8 @@ interface CarPanelProps {
   onClose: () => void
   pendingAction?: { carId: number; action: "refresh" | "edit" } | null
   onPendingActionConsumed?: () => void
+  onRefreshStart?: (id: number) => void
+  onRefreshEnd?: (id: number) => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -192,6 +194,8 @@ export function CarPanel({
   onClose,
   pendingAction,
   onPendingActionConsumed,
+  onRefreshStart,
+  onRefreshEnd,
 }: CarPanelProps) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
@@ -286,8 +290,10 @@ export function CarPanel({
   async function handleRefresh() {
     if (!car?.id) return
     setRefreshError(null)
+    onRefreshStart?.(car.id)
     const otherCars = (allCars ?? []).filter(c => c.id !== car.id)
     const result = await refreshCar(car, setRefreshStep, otherCars)
+    onRefreshEnd?.(car.id)
     if (result.status === "error") {
       setRefreshError(result.error)
       setRefreshStep("error")

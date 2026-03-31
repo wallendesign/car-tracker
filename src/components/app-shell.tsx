@@ -283,6 +283,8 @@ export function AppShell({ projectId, projectName, projectSlug: _projectSlug }: 
             onClose={() => setSelected(null)}
             pendingAction={pendingAction}
             onPendingActionConsumed={() => setPendingAction(null)}
+            onRefreshStart={(id) => setRefreshingId(id)}
+            onRefreshEnd={() => setRefreshingId(null)}
           />
         </div>
       </div>
@@ -357,6 +359,8 @@ export function AppShell({ projectId, projectName, projectSlug: _projectSlug }: 
                 onClose={() => setSelected(null)}
                 pendingAction={pendingAction}
                 onPendingActionConsumed={() => setPendingAction(null)}
+                onRefreshStart={(id) => setRefreshingId(id)}
+                onRefreshEnd={() => setRefreshingId(null)}
               />
             </div>
           </div>
