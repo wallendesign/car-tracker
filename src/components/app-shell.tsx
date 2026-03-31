@@ -180,7 +180,6 @@ export function AppShell({ projectId, projectName, projectSlug: _projectSlug }: 
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         activeProjectId={projectId}
-        cars={cars}
       />
 
       {/* Left column: header + list */}

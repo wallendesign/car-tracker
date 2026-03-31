@@ -2,23 +2,14 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getAllProjects, createProject, deleteProject, renameProject } from "@/lib/db"
+import { getAllProjectsWithStats, createProject, deleteProject, renameProject } from "@/lib/db"
+import type { ProjectWithStats } from "@/types/project"
 import type { ProjectRecord } from "@/types/project"
-import type { CarRecord, CarStatus } from "@/types/car"
-
-const STATUS_LABEL: Record<CarStatus, string> = {
-  interested: "Tillagd",
-  contacted: "Favorit",
-  test_driven: "Provkörd",
-  pass: "Ej intressant",
-  sold: "Såld",
-}
 
 interface ProjectSidebarProps {
   open: boolean
   onClose: () => void
   activeProjectId: number
-  cars: CarRecord[]
   onProjectCreated?: (project: ProjectRecord) => void
 }
 
@@ -26,11 +17,10 @@ export function ProjectSidebar({
   open,
   onClose,
   activeProjectId,
-  cars,
   onProjectCreated,
 }: ProjectSidebarProps) {
   const router = useRouter()
-  const [projects, setProjects] = useState<ProjectRecord[]>([])
+  const [projects, setProjects] = useState<ProjectWithStats[]>([])
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -41,7 +31,7 @@ export function ProjectSidebar({
 
   useEffect(() => {
     if (open) {
-      getAllProjects().then(setProjects)
+      getAllProjectsWithStats().then(setProjects)
     }
   }, [open])
 
@@ -57,11 +47,11 @@ export function ProjectSidebar({
     e.preventDefault()
     if (!newName.trim()) return
     const project = await createProject(newName.trim())
-    setProjects((prev) => [project, ...prev])
     setNewName("")
     setCreating(false)
     onProjectCreated?.(project)
     router.push(`/p/${project.slug}`)
+    onClose()
   }
 
   async function handleRename(id: number) {
@@ -84,37 +74,14 @@ export function ProjectSidebar({
     if (id === activeProjectId) {
       if (remaining.length > 0) {
         router.push(`/p/${remaining[0].slug}`)
+        onClose()
       } else {
-        // Create new default project
         const project = await createProject("Min bilsökning")
-        setProjects([project])
         router.push(`/p/${project.slug}`)
+        onClose()
       }
     }
   }
-
-  // Stats for active project
-  const projectCars = cars // already filtered to activeProjectId in AppShell
-  const avgPrice =
-    projectCars.filter((c) => c.price != null).length > 0
-      ? Math.round(
-          projectCars.filter((c) => c.price != null).reduce((s, c) => s + c.price!, 0) /
-            projectCars.filter((c) => c.price != null).length
-        )
-      : null
-
-  const statusCounts = projectCars.reduce(
-    (acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }),
-    {} as Partial<Record<CarStatus, number>>
-  )
-
-  // Photo grid: favorites first, then recently added
-  const photoGrid = [
-    ...projectCars.filter((c) => c.status === "contacted" && c.photoUrl),
-    ...projectCars.filter((c) => c.status !== "contacted" && c.photoUrl),
-  ]
-    .slice(0, 4)
-    .map((c) => c.photoUrl!)
 
   return (
     <>
@@ -128,7 +95,7 @@ export function ProjectSidebar({
 
       {/* Panel */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border flex flex-col shadow-xl transition-transform duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-80 bg-background border-r border-border flex flex-col shadow-xl transition-transform duration-200 ease-in-out ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -146,13 +113,13 @@ export function ProjectSidebar({
 
         {/* Project list */}
         <div className="flex-1 overflow-y-auto">
-          <div className="py-1">
+          <div className="py-2 flex flex-col gap-0">
             {projects.map((p) => (
               <div key={p.id} className="group relative">
                 {editingId === p.id ? (
                   <form
                     onSubmit={(e) => { e.preventDefault(); handleRename(p.id) }}
-                    className="px-3 py-1.5"
+                    className="px-4 py-2"
                   >
                     <input
                       ref={editInputRef}
@@ -164,59 +131,81 @@ export function ProjectSidebar({
                     />
                   </form>
                 ) : confirmDeleteId === p.id ? (
-                  <div className="px-3 py-2 flex items-center gap-2">
-                    <span className="text-xs text-destructive flex-1">Ta bort?</span>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="text-xs text-destructive hover:underline"
-                    >
-                      Ja
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteId(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Nej
-                    </button>
+                  <div className="px-4 py-3 flex items-center gap-3 border-b border-border">
+                    <span className="text-xs text-destructive flex-1">Ta bort projektet och alla bilar?</span>
+                    <button onClick={() => handleDelete(p.id)} className="text-xs text-destructive hover:underline shrink-0">Ja</button>
+                    <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-muted-foreground hover:text-foreground shrink-0">Nej</button>
                   </div>
                 ) : (
                   <div
-                    className={`flex items-center px-3 py-2 cursor-pointer transition-colors ${
+                    className={`px-4 pt-3 pb-3 cursor-pointer transition-colors border-b border-border ${
                       p.id === activeProjectId
-                        ? "bg-accent text-foreground"
-                        : "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+                        ? "bg-accent"
+                        : "hover:bg-accent/40"
                     }`}
                     onClick={() => { onClose(); router.push(`/p/${p.slug}`) }}
                   >
-                    <span className="flex-1 text-sm truncate">{p.name}</span>
-                    {/* Car count badge — only meaningful for active; others we don't have counts */}
-                    {p.id === activeProjectId && (
-                      <span className="ml-2 shrink-0 inline-flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 px-1.5 min-w-[18px] h-[18px] text-[10px] font-medium tabular-nums">
-                        {projectCars.length}
+                    {/* Name row */}
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className={`flex-1 text-sm font-medium truncate ${p.id === activeProjectId ? "text-foreground" : "text-foreground/80"}`}>
+                        {p.name}
                       </span>
-                    )}
-                    {/* Context menu — appears on hover */}
-                    <div
-                      className="ml-1 shrink-0 hidden group-hover:flex items-center gap-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => { setEditingId(p.id); setEditName(p.name) }}
-                        className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-[10px]"
-                        aria-label="Byt namn"
-                        title="Byt namn"
+                      {/* Car count */}
+                      <span className="shrink-0 inline-flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 px-1.5 min-w-[18px] h-[18px] text-[10px] font-medium tabular-nums">
+                        {p.carCount}
+                      </span>
+                      {/* Hover actions */}
+                      <div
+                        className="shrink-0 hidden group-hover:flex items-center gap-0.5 ml-0.5"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        ✎
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(p.id)}
-                        className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-accent transition-colors text-[10px]"
-                        aria-label="Ta bort"
-                        title="Ta bort projekt"
-                      >
-                        ✕
-                      </button>
+                        <button
+                          onClick={() => { setEditingId(p.id); setEditName(p.name) }}
+                          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors text-[10px]"
+                          title="Byt namn"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(p.id)}
+                          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-background/60 transition-colors text-[11px]"
+                          title="Ta bort projekt"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Stats row */}
+                    {p.carCount > 0 && (
+                      <p className="text-[11px] text-muted-foreground mb-2 tabular-nums">
+                        {p.avgPrice != null
+                          ? `Snittpris ${p.avgPrice.toLocaleString("sv-SE")} kr`
+                          : `${p.carCount} bil${p.carCount !== 1 ? "ar" : ""}`}
+                        {p.statusCounts.contacted > 0 && ` · ${p.statusCounts.contacted} favorit${p.statusCounts.contacted !== 1 ? "er" : ""}`}
+                        {p.statusCounts.sold > 0 && ` · ${p.statusCounts.sold} såld${p.statusCounts.sold !== 1 ? "a" : ""}`}
+                      </p>
+                    )}
+
+                    {/* Photo grid */}
+                    {p.previewPhotos.length > 0 && (
+                      <div
+                        className="grid gap-1"
+                        style={{ gridTemplateColumns: `repeat(${Math.min(p.previewPhotos.length, 4)}, 1fr)` }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {p.previewPhotos.slice(0, 4).map((url, i) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={i}
+                            src={`/api/image-proxy?url=${encodeURIComponent(url)}`}
+                            alt=""
+                            className="w-full aspect-[4/3] object-cover rounded bg-muted"
+                            onClick={() => { onClose(); router.push(`/p/${p.slug}`) }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -224,21 +213,21 @@ export function ProjectSidebar({
           </div>
 
           {/* Create project */}
-          <div className="px-3 py-2 border-t border-border">
+          <div className="px-4 py-3">
             {creating ? (
               <form onSubmit={handleCreate} className="flex items-center gap-2">
                 <input
                   ref={newInputRef}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Escape" && (setCreating(false), setNewName(""))}
+                  onKeyDown={(e) => { if (e.key === "Escape") { setCreating(false); setNewName("") } }}
                   placeholder="Projektnamn..."
                   className="flex-1 text-sm bg-transparent outline-none border-b border-border pb-0.5 placeholder:text-muted-foreground/60"
                 />
                 <button
                   type="submit"
                   disabled={!newName.trim()}
-                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors shrink-0"
                 >
                   Skapa
                 </button>
@@ -253,41 +242,6 @@ export function ProjectSidebar({
               </button>
             )}
           </div>
-
-          {/* Active project stats */}
-          {projectCars.length > 0 && (
-            <div className="px-3 py-3 border-t border-border">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-2">
-                Statistik
-              </p>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <span>{projectCars.length} bil{projectCars.length !== 1 ? "ar" : ""}</span>
-                {avgPrice != null && (
-                  <span>Snittpris {avgPrice.toLocaleString("sv-SE")} kr</span>
-                )}
-                {(Object.entries(statusCounts) as [CarStatus, number][])
-                  .filter(([s]) => s !== "interested")
-                  .map(([s, count]) => (
-                    <span key={s}>{STATUS_LABEL[s]}: {count}</span>
-                  ))}
-              </div>
-
-              {/* Photo grid */}
-              {photoGrid.length > 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-1">
-                  {photoGrid.map((url, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={i}
-                      src={`/api/image-proxy?url=${encodeURIComponent(url)}`}
-                      alt=""
-                      className="w-full aspect-[4/3] object-cover rounded bg-muted"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </>

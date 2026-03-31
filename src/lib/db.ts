@@ -2,7 +2,7 @@
 // Server-backed persistence via /api/cars and /api/projects routes (Neon Postgres)
 
 import type { CarRecord } from "@/types/car"
-import type { ProjectRecord } from "@/types/project"
+import type { ProjectRecord, ProjectWithStats } from "@/types/project"
 
 // ── Cars ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +70,11 @@ export async function getCarByUrl(url: string, projectId?: number): Promise<CarR
 
 export async function getAllProjects(): Promise<ProjectRecord[]> {
   const res = await fetch("/api/projects")
+  return res.json()
+}
+
+export async function getAllProjectsWithStats(): Promise<ProjectWithStats[]> {
+  const res = await fetch("/api/projects?stats=1")
   return res.json()
 }
 
