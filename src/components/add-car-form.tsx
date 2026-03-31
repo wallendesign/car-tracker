@@ -162,29 +162,23 @@ export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessi
   async function handleImportSearch() {
     const urls = searchUrls
 
-    // Duplicate-check all URLs upfront, build list of new ones with tempIds
-    const items: { url: string; tempId: string }[] = []
-    for (const listingUrl of urls) {
-      const existing = await getCarByUrl(listingUrl, projectId)
-      if (!existing) {
-        items.push({ url: listingUrl, tempId: `temp-${Date.now()}-${Math.random()}` })
-      }
-    }
+    // Build skeleton items for ALL urls immediately — no async before closing modal
+    const items = urls.map(url => ({ url, tempId: `temp-${Date.now()}-${Math.random()}` }))
 
-    // Reset form and close modal immediately, adding all skeleton rows at once
+    // Close modal and show all skeleton rows RIGHT NOW (synchronous state update)
     setUrl("")
     setSearchUrls([])
     setSearchProgress(null)
     setStep("idle")
-    if (items.length > 0) {
-      onBulkProcessingStart?.(items)
-    } else {
-      onClose?.()
-      return
-    }
+    onBulkProcessingStart?.(items)
 
-    // Process each listing sequentially — skeleton row is removed when onAdd fires
+    // Process sequentially — check duplicates inline and remove their skeletons
     for (const { url: listingUrl, tempId } of items) {
+      const existing = await getCarByUrl(listingUrl, projectId)
+      if (existing) {
+        onProcessingError?.(tempId) // remove duplicate skeleton
+        continue
+      }
       try {
         await addSingleListing(listingUrl, tempId)
       } catch {
@@ -195,13 +189,7 @@ export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessi
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!url.trim()) return
-
-    // Search import confirm step: pressing enter/submit starts the import
-    if (step === "search-confirm") {
-      await handleImportSearch()
-      return
-    }
+    if (!url.trim() || step === "search-confirm") return
 
     setError(null)
     setWarnings([])
@@ -330,8 +318,9 @@ export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessi
             Hittade {searchUrls.length} annonser
           </span>
           <button
-            type="submit"
-            className="rounded bg-foreground px-2 py-0.5 text-xs font-medium text-background hover:opacity-80"
+            type="button"
+            onClick={handleImportSearch}
+            className="rounded bg-foreground px-2 py-0.5 text-xs font-medium text-background hover:opacity-80 active:opacity-60"
           >
             Importera alla
           </button>
