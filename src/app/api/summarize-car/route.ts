@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generateObject } from "ai"
+import { generateObject, generateText } from "ai"
 import { anthropic } from "@ai-sdk/anthropic"
 import { z } from "zod"
 
@@ -13,18 +13,6 @@ const SummarySchema = z.object({
   aiValueAssessment: z.string().describe(
     "1-2 sentence direct verdict on whether the price is fair given mileage and Swedish market, then 2-3 bullet points each starting with '• ' with specific supporting context: typical market price range, mileage assessment, and one key value factor. No other formatting."
   ),
-})
-
-const ScoreSchema = z.object({
-  aiScore: z.number().min(0).max(100).describe(
-    "Composite score 0–100 based on: value for money (30%), reliability/risk (25%), condition indicators (mileage/age, 25%), and overall desirability (20%). Higher is better. Return a whole number integer."
-  ),
-  aiTldr: z.object({
-    drawback: z.string().describe("1–2 sentences describing the main drawbacks of this specific car"),
-    risk: z.string().describe("One sentence about the biggest risk or concern with this car"),
-    standout: z.string().describe("One sentence about what makes this car stand out positively"),
-    recommendation: z.string().describe("One direct sentence: should the buyer pursue this car or not, and why"),
-  }),
 })
 
 interface OtherCar {
@@ -54,23 +42,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing car data" }, { status: 400 })
   }
 
-  const carContext = `${year} ${make} ${model}
-${price != null ? `Begärt pris: ${price.toLocaleString("sv-SE")} kr` : "Pris: ej angivet"}
-${mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} mil (svenska mil, 1 mil = 10 km)` : "Miltal: ej angivet"}
-${horsepower != null ? `Effekt: ${horsepower} hk` : ""}
-${fuelType ? `Drivmedel: ${fuelType}` : ""}
-${transmission ? `Växellåda: ${transmission}` : ""}
-${driveType ? `Drivhjul: ${driveType}` : ""}
-${equipment?.length ? `Utrustning: ${equipment.join(", ")}` : ""}`
+  const carContext = [
+    `${year} ${make} ${model}`,
+    price != null ? `Pris: ${price.toLocaleString("sv-SE")} kr` : "Pris: ej angivet",
+    mileage != null ? `Miltal: ${mileage.toLocaleString("sv-SE")} mil` : "Miltal: ej angivet",
+    horsepower != null ? `Effekt: ${horsepower} hk` : "",
+    fuelType ? `Drivmedel: ${fuelType}` : "",
+    transmission ? `Växellåda: ${transmission}` : "",
+    driveType ? `Drivhjul: ${driveType}` : "",
+    equipment?.length ? `Utrustning: ${equipment.join(", ")}` : "",
+  ].filter(Boolean).join("\n")
 
   const comparisonContext = otherCars && otherCars.length > 0
-    ? `\nJämförelsebilar i listan:\n${otherCars.map(c =>
+    ? `\nJämförelsebilar:\n${otherCars.map(c =>
         `- ${c.year} ${c.make} ${c.model}${c.price != null ? `, ${c.price.toLocaleString("sv-SE")} kr` : ""}${c.mileage != null ? `, ${c.mileage.toLocaleString("sv-SE")} mil` : ""}`
       ).join("\n")}`
     : ""
 
   try {
-    // Primary call: proven 3-field summary
+    // Primary call: 3-field summary via generateObject (proven working)
     const { object: summary } = await generateObject({
       model: anthropic("claude-haiku-4-5-20251001"),
       schema: SummarySchema,
@@ -82,19 +72,30 @@ Skriv på svenska. Var kortfattad och direkt — köparen vill snabbt scanna nyc
 Varje fält ska följa exakt detta format: en kort inledning, sedan punkter som börjar med "• ".`,
     })
 
-    // Secondary call: score + tldr (non-fatal if it fails)
+    // Secondary call: score + tldr via generateText (avoids zod-to-json-schema issues)
     let scoreResult: { aiScore?: number; aiTldr?: { drawback: string; risk: string; standout: string; recommendation: string } } = {}
     try {
-      const { object: scored } = await generateObject({
+      const { text } = await generateText({
         model: anthropic("claude-haiku-4-5-20251001"),
-        schema: ScoreSchema,
         prompt: `Du analyserar denna begagnade bil i Sverige:
 
 ${carContext}${comparisonContext}
 
-Ge ett helhetsbetyg 0–100 och en TL;DR-analys på svenska. Var kortfattad och direkt.`,
+Svara ENBART med ett JSON-objekt (inga backticks, inga förklaringar):
+{"aiScore":<heltal 0-100>,"aiTldr":{"drawback":"<1-2 meningar om nackdelar>","risk":"<1 mening om störst risk>","standout":"<1 mening om vad som sticker ut positivt>","recommendation":"<1 mening: ska köparen gå vidare eller inte>"}}
+
+aiScore baseras på: prisvärdhet (30%), tillförlitlighet/risk (25%), skick/miltal/ålder (25%), önskvärdhet (20%).`,
       })
-      scoreResult = scored
+
+      const raw = text.trim().replace(/^```json?\s*/i, "").replace(/\s*```$/,"")
+      const parsed = JSON.parse(raw) as { aiScore?: unknown; aiTldr?: unknown }
+      if (typeof parsed.aiScore === "number" && parsed.aiTldr && typeof parsed.aiTldr === "object") {
+        const tldr = parsed.aiTldr as Record<string, unknown>
+        if (typeof tldr.drawback === "string" && typeof tldr.risk === "string" &&
+            typeof tldr.standout === "string" && typeof tldr.recommendation === "string") {
+          scoreResult = { aiScore: Math.round(parsed.aiScore), aiTldr: tldr as { drawback: string; risk: string; standout: string; recommendation: string } }
+        }
+      }
     } catch (scoreErr) {
       console.error("Score generation failed (non-fatal):", scoreErr)
     }
