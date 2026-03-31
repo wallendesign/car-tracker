@@ -1,11 +1,16 @@
 import { sql } from "@vercel/postgres"
 import { NextRequest, NextResponse } from "next/server"
 import type { CarRecord } from "@/types/car"
+import { ensureProjectsTable } from "@/app/api/projects/route"
 
 async function ensureTable() {
+  // Projects table must exist first (it also handles car migration)
+  await ensureProjectsTable()
+
   await sql`
     CREATE TABLE IF NOT EXISTS cars (
       id SERIAL PRIMARY KEY,
+      project_id INTEGER,
       listing_url TEXT NOT NULL,
       marketplace TEXT NOT NULL,
       make TEXT NOT NULL,
@@ -39,11 +44,13 @@ async function ensureTable() {
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS listing_date TEXT`
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS ai_score INTEGER`
   await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS ai_tldr TEXT`
+  await sql`ALTER TABLE cars ADD COLUMN IF NOT EXISTS project_id INTEGER`
 }
 
 function rowToCar(row: Record<string, unknown>): CarRecord {
   return {
     id: row.id as number,
+    projectId: row.project_id as number,
     listingUrl: row.listing_url as string,
     marketplace: row.marketplace as CarRecord["marketplace"],
     make: row.make as string,
@@ -77,10 +84,22 @@ function rowToCar(row: Record<string, unknown>): CarRecord {
 export async function GET(req: NextRequest) {
   await ensureTable()
   const url = req.nextUrl.searchParams.get("url")
+  const projectId = req.nextUrl.searchParams.get("project_id")
+
   if (url) {
+    if (projectId) {
+      const { rows } = await sql`SELECT * FROM cars WHERE listing_url = ${url} AND project_id = ${parseInt(projectId)} LIMIT 1`
+      return NextResponse.json(rows[0] ? rowToCar(rows[0]) : null)
+    }
     const { rows } = await sql`SELECT * FROM cars WHERE listing_url = ${url} LIMIT 1`
     return NextResponse.json(rows[0] ? rowToCar(rows[0]) : null)
   }
+
+  if (projectId) {
+    const { rows } = await sql`SELECT * FROM cars WHERE project_id = ${parseInt(projectId)} ORDER BY created_at DESC`
+    return NextResponse.json(rows.map(rowToCar))
+  }
+
   const { rows } = await sql`SELECT * FROM cars ORDER BY created_at DESC`
   return NextResponse.json(rows.map(rowToCar))
 }
@@ -93,13 +112,13 @@ export async function POST(req: NextRequest) {
 
   const { rows } = await sql`
     INSERT INTO cars (
-      listing_url, marketplace, make, model, year, price, mileage, horsepower,
+      project_id, listing_url, marketplace, make, model, year, price, mileage, horsepower,
       location, photo_url, body_type, fuel_type, transmission, drive_type,
       engine_volume, color, seats, registration_date, listing_date, equipment,
       ai_model_overview, ai_common_issues, ai_value_assessment, ai_score, ai_tldr,
       status, created_at
     ) VALUES (
-      ${car.listingUrl}, ${car.marketplace}, ${car.make}, ${car.model}, ${car.year},
+      ${car.projectId ?? null}, ${car.listingUrl}, ${car.marketplace}, ${car.make}, ${car.model}, ${car.year},
       ${car.price}, ${car.mileage}, ${car.horsepower}, ${car.location}, ${car.photoUrl},
       ${car.bodyType}, ${car.fuelType}, ${car.transmission}, ${car.driveType},
       ${car.engineVolume}, ${car.color}, ${car.seats}, ${car.registrationDate},

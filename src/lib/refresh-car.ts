@@ -61,6 +61,7 @@ export async function refreshCar(car: CarRecord, onStep?: StepCallback, otherCar
   const summaryData = await summaryRes.json()
 
   const refreshed: Omit<CarRecord, "id" | "status" | "createdAt"> = {
+    projectId: car.projectId,
     listingUrl: car.listingUrl,
     marketplace: analyzeData.marketplace,
     make: analyzeData.make,

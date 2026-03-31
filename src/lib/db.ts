@@ -1,9 +1,10 @@
 // src/lib/db.ts
-// Server-backed persistence via /api/cars routes (Neon Postgres)
-// Previously used Dexie.js (IndexedDB) — swapped to cross-device server storage.
-// All function signatures are identical so components need no changes.
+// Server-backed persistence via /api/cars and /api/projects routes (Neon Postgres)
 
 import type { CarRecord } from "@/types/car"
+import type { ProjectRecord } from "@/types/project"
+
+// ── Cars ─────────────────────────────────────────────────────────────────────
 
 export async function saveCar(car: Omit<CarRecord, "id">): Promise<number> {
   const res = await fetch("/api/cars", {
@@ -15,8 +16,8 @@ export async function saveCar(car: Omit<CarRecord, "id">): Promise<number> {
   return data.id as number
 }
 
-export async function getAllCars(): Promise<CarRecord[]> {
-  const res = await fetch("/api/cars")
+export async function getAllCars(projectId: number): Promise<CarRecord[]> {
+  const res = await fetch(`/api/cars?project_id=${projectId}`)
   return res.json()
 }
 
@@ -57,8 +58,39 @@ export async function deleteCar(id: number): Promise<void> {
   await fetch(`/api/cars/${id}`, { method: "DELETE" })
 }
 
-export async function getCarByUrl(url: string): Promise<CarRecord | undefined> {
-  const res = await fetch(`/api/cars?url=${encodeURIComponent(url)}`)
+export async function getCarByUrl(url: string, projectId?: number): Promise<CarRecord | undefined> {
+  const params = new URLSearchParams({ url })
+  if (projectId != null) params.set("project_id", String(projectId))
+  const res = await fetch(`/api/cars?${params}`)
   const data = await res.json()
   return data ?? undefined
+}
+
+// ── Projects ──────────────────────────────────────────────────────────────────
+
+export async function getAllProjects(): Promise<ProjectRecord[]> {
+  const res = await fetch("/api/projects")
+  return res.json()
+}
+
+export async function createProject(name: string): Promise<ProjectRecord> {
+  const res = await fetch("/api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  })
+  return res.json()
+}
+
+export async function renameProject(id: number, name: string): Promise<{ slug: string }> {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  })
+  return res.json()
+}
+
+export async function deleteProject(id: number): Promise<void> {
+  await fetch(`/api/projects/${id}`, { method: "DELETE" })
 }

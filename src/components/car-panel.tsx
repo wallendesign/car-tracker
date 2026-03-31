@@ -362,6 +362,7 @@ export function CarPanel({
     if (!car?.id) return
     const updated: CarRecord = { ...car, ...editDraft }
     await updateCarData(car.id, {
+      projectId: updated.projectId,
       listingUrl: updated.listingUrl,
       marketplace: updated.marketplace,
       make: updated.make,

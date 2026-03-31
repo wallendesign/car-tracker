@@ -5,6 +5,7 @@ import { useTheme } from "next-themes"
 import { AddCarForm } from "@/components/add-car-form"
 import { CarList } from "@/components/car-list"
 import { CarPanel } from "@/components/car-panel"
+import { ProjectSidebar } from "@/components/project-sidebar"
 import { getAllCars, updateCarStatus } from "@/lib/db"
 import { refreshCar } from "@/lib/refresh-car"
 import type { CarRecord, CarStatus } from "@/types/car"
@@ -21,7 +22,13 @@ function useIsMobile() {
   return isMobile
 }
 
-export function AppShell() {
+interface AppShellProps {
+  projectId: number
+  projectName: string
+  projectSlug: string
+}
+
+export function AppShell({ projectId, projectName, projectSlug: _projectSlug }: AppShellProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const [cars, setCars] = useState<CarRecord[]>([])
   const [selected, setSelected] = useState<CarRecord | null>(null)
@@ -29,6 +36,7 @@ export function AppShell() {
   const [refreshProgress, setRefreshProgress] = useState({ current: 0, total: 0 })
   const [addCarOpen, setAddCarOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ carId: number; action: "refresh" | "edit" } | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 })
@@ -37,18 +45,19 @@ export function AppShell() {
   const isMobile = useIsMobile()
 
   useEffect(() => {
-    getAllCars().then(setCars)
-  }, [])
+    getAllCars(projectId).then(setCars)
+  }, [projectId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
+      if (sidebarOpen) { setSidebarOpen(false); return }
       if (addCarOpen) { setAddCarOpen(false); return }
       if (menuOpen) { setMenuOpen(false); return }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [addCarOpen, menuOpen])
+  }, [addCarOpen, menuOpen, sidebarOpen])
 
   function handleAdd(car: CarRecord) {
     setCars((prev) => {
@@ -166,10 +175,29 @@ export function AppShell() {
             }
       }
     >
+      {/* Project sidebar */}
+      <ProjectSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeProjectId={projectId}
+        cars={cars}
+      />
+
       {/* Left column: header + list */}
       <div className={`min-w-0 flex flex-col overflow-hidden ${!isMobile && selected ? "border-r border-border" : ""}`}>
-        <header className="flex h-10 shrink-0 items-center border-b border-border px-4 gap-3">
-          <span className="text-sm font-medium tracking-tight">Bilspåraren</span>
+        <header className="flex h-10 shrink-0 items-center border-b border-border px-4 gap-2">
+          {/* Burger menu */}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            className="text-muted-foreground hover:text-foreground transition-colors flex flex-col gap-[3px] justify-center items-center w-5 h-5 shrink-0"
+            aria-label="Projektmeny"
+          >
+            <span className="block w-[14px] h-[1.5px] bg-current rounded-full" />
+            <span className="block w-[14px] h-[1.5px] bg-current rounded-full" />
+            <span className="block w-[14px] h-[1.5px] bg-current rounded-full" />
+          </button>
+
+          <span className="text-sm font-medium tracking-tight truncate">{projectName}</span>
 
           <div className="ml-auto flex items-center gap-2">
             {(refreshingAll || checkingStatus) && (
@@ -274,7 +302,13 @@ export function AppShell() {
               >✕</button>
             </div>
             <div className="p-4">
-              <AddCarForm onAdd={handleAdd} onClose={() => setAddCarOpen(false)} onProcessing={handleProcessing} onProcessingError={handleProcessingError} />
+              <AddCarForm
+                projectId={projectId}
+                onAdd={handleAdd}
+                onClose={() => setAddCarOpen(false)}
+                onProcessing={handleProcessing}
+                onProcessingError={handleProcessingError}
+              />
             </div>
           </div>
         </>

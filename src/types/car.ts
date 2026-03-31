@@ -14,6 +14,7 @@ export interface AiTldr {
 
 export interface CarRecord {
   id?: number              // Dexie auto-increment primary key — optional on insert
+  projectId: number        // Foreign key to projects table
   // Source
   listingUrl: string       // Full marketplace URL (e.g. https://www.blocket.se/annons/...)
   marketplace: Marketplace // Detected source marketplace

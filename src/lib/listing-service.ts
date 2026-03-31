@@ -5,7 +5,7 @@ export type AddCarResult =
   | { success: true; car: CarRecord }
   | { success: false; error: string }
 
-export async function addCarFromUrl(url: string): Promise<AddCarResult> {
+export async function addCarFromUrl(url: string, projectId: number): Promise<AddCarResult> {
   // Step 1: Fetch listing HTML server-side
   const fetchRes = await fetch("/api/fetch-listing", {
     method: "POST",
@@ -26,8 +26,9 @@ export async function addCarFromUrl(url: string): Promise<AddCarResult> {
   const analyzeData = await analyzeRes.json()
   if (!analyzeRes.ok) return { success: false, error: analyzeData.error }
 
-  // Step 3: Save to Dexie
+  // Step 3: Save to DB
   const car: Omit<CarRecord, "id"> = {
+    projectId,
     listingUrl: url,
     marketplace: analyzeData.marketplace,
     make: analyzeData.make,

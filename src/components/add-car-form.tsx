@@ -5,6 +5,7 @@ import { saveCar, updateCarAISummary, getCarByUrl } from "@/lib/db"
 import type { CarRecord } from "@/types/car"
 
 interface AddCarFormProps {
+  projectId: number
   onAdd: (car: CarRecord) => void
   onClose?: () => void
   onProcessing?: (url: string, tempId: string) => void
@@ -35,7 +36,7 @@ function validateCar(data: { year: number; price: number | null; mileage: number
   return warnings
 }
 
-export function AddCarForm({ onAdd, onClose, onProcessing, onProcessingError }: AddCarFormProps) {
+export function AddCarForm({ projectId, onAdd, onClose, onProcessing, onProcessingError }: AddCarFormProps) {
   const [url, setUrl] = useState("")
   const [step, setStep] = useState<Step>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -48,8 +49,8 @@ export function AddCarForm({ onAdd, onClose, onProcessing, onProcessingError }: 
     setError(null)
     setWarnings([])
 
-    // Duplicate check
-    const existing = await getCarByUrl(url.trim())
+    // Duplicate check (within same project)
+    const existing = await getCarByUrl(url.trim(), projectId)
     if (existing) {
       setError(`${existing.year} ${existing.make} ${existing.model} finns redan i listan`)
       return
@@ -87,6 +88,7 @@ export function AddCarForm({ onAdd, onClose, onProcessing, onProcessingError }: 
     if (w.length > 0) setWarnings(w)
 
     const car: Omit<CarRecord, "id"> = {
+      projectId,
       listingUrl: url.trim(),
       marketplace: analyzeData.marketplace,
       make: analyzeData.make,
