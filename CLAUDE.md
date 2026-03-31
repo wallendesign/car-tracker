@@ -1,3 +1,8 @@
+## Workflow instructions
+
+- **Always push changes to GitHub when done** — never leave changes only local. After every task, stage relevant files, commit, and `git push`. Vercel auto-deploys on push to main.
+- Never ask the user to run git commands themselves.
+
 <!-- VERCEL BEST PRACTICES START -->
 ## Best practices for developing on Vercel
 
