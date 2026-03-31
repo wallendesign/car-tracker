@@ -75,25 +75,74 @@ Varje fält ska följa exakt detta format: en kort inledning, sedan punkter som 
     // Secondary call: score + tldr via generateText (avoids zod-to-json-schema issues)
     let scoreResult: { aiScore?: number; aiTldr?: { drawback: string; risk: string; standout: string; recommendation: string } } = {}
     try {
+      const currentYear = new Date().getFullYear()
+      const age = year ? currentYear - year : null
+      const remainingYears = age != null ? Math.max(20 - age, 1) : null
+      const costPerYear = price != null && remainingYears != null ? Math.round(price / remainingYears) : null
+      const annualMil = mileage != null && age != null && age > 0 ? Math.round(mileage / age) : null
+
+      const scoringHints = [
+        costPerYear != null ? `Kostnad per återstående år: ${costPerYear.toLocaleString("sv-SE")} kr` : "",
+        annualMil != null ? `Körsträcka per år: ${annualMil.toLocaleString("sv-SE")} mil/år` : "",
+        age != null ? `Ålder: ${age} år` : "",
+      ].filter(Boolean).join(" | ")
+
       const { text } = await generateText({
         model: anthropic("claude-haiku-4-5-20251001"),
-        prompt: `Du analyserar denna begagnade bil i Sverige:
+        prompt: `Du sätter en exakt poäng på denna begagnade bil i Sverige. Poängen MÅSTE spegla bilens faktiska kvalitet — använd hela skalan 0–100, inte en säker medelpoäng.
 
 ${carContext}${comparisonContext}
+${scoringHints ? `\nBeräknade nyckeltal: ${scoringHints}` : ""}
 
-Svara ENBART med ett JSON-objekt (inga backticks, inga förklaringar):
-{"aiScore":<heltal 0-100>,"aiTldr":{"drawback":"<1-2 meningar om nackdelar>","risk":"<1 mening om störst risk>","standout":"<1 mening om vad som sticker ut positivt>","recommendation":"<1 mening: ska köparen gå vidare eller inte>"}}
+POÄNGMODELL (räkna ut varje del separat, summera sedan):
 
-aiScore baseras på: prisvärdhet (30%), tillförlitlighet/risk (25%), skick/miltal/ålder (25%), önskvärdhet (20%).`,
+A. PRISVÄRDHET (0–30 poäng)
+   Kostnad per återstående år (antag 20 år total livslängd):
+   <3 000 kr/år → 27–30p | 3–5 000 kr/år → 22–26p | 5–10 000 kr/år → 15–21p
+   10–15 000 kr/år → 8–14p | 15–20 000 kr/år → 3–7p | >20 000 kr/år → 0–2p
+   Om priset ej angivet: ge 15p (neutralt).
+
+B. TILLFÖRLITLIGHET & RISK (0–25 poäng)
+   Baserat på modellens kända rykte, årsmodell och typiska problem:
+   Känd pålitlig modell utan allvarliga kända problem → 20–25p
+   Genomsnittlig tillförlitlighet med hanterbara problem → 12–19p
+   Kända allvarliga problem eller problematisk årsmodell → 5–11p
+   Hög risk (dyr att underhålla, känd för motorhaverier etc.) → 0–4p
+
+C. SKICK / MILTAL / ÅLDER (0–25 poäng)
+   Kombinera ålder och körsträcka per år (ca 1 500–2 000 mil/år = normalt):
+   ≤5 år OCH ≤1 500 mil/år → 22–25p
+   ≤8 år OCH ≤2 000 mil/år → 16–21p
+   8–12 år ELLER 2 000–3 000 mil/år → 9–15p
+   >12 år ELLER >3 000 mil/år → 4–8p
+   Mycket gammal (>15 år) OCH högt miltal → 0–3p
+
+D. ÖNSKVÄRDHET & UTRUSTNING (0–20 poäng)
+   Välutrustad, attraktiv spec (dragkrok, panorama, premium ljud, fyra-hjulsdrift etc.) → 16–20p
+   Normal utrustningsnivå → 10–15p
+   Sparsam utrustning, ovanlig färg/kaross, svår att sälja vidare → 4–9p
+   Mycket svårsåld, nischad eller daterad spec → 0–3p
+
+Svara ENBART med ett JSON-objekt (inga backticks, inga förklaringar). Du MÅSTE ange scoreA, scoreB, scoreC, scoreD separat — totalpoängen räknas som deras summa:
+{"scoreA":<0-30>,"scoreB":<0-25>,"scoreC":<0-25>,"scoreD":<0-20>,"aiTldr":{"drawback":"<1-2 meningar om den tydligaste nackdelen>","risk":"<1 mening om den konkreta störst risken att känna till>","standout":"<1 mening om vad som faktiskt sticker ut positivt>","recommendation":"<1 mening: ska köparen gå vidare ja/nej och varför>"}}`,
       })
 
       const raw = text.trim().replace(/^```json?\s*/i, "").replace(/\s*```$/,"")
-      const parsed = JSON.parse(raw) as { aiScore?: unknown; aiTldr?: unknown }
-      if (typeof parsed.aiScore === "number" && parsed.aiTldr && typeof parsed.aiTldr === "object") {
+      console.log("[summarize-car] raw model output:", raw)
+      const parsed = JSON.parse(raw) as { scoreA?: unknown; scoreB?: unknown; scoreC?: unknown; scoreD?: unknown; aiTldr?: unknown }
+      console.log("[summarize-car] parsed scores:", { scoreA: parsed.scoreA, scoreB: parsed.scoreB, scoreC: parsed.scoreC, scoreD: parsed.scoreD })
+      const scoreA = typeof parsed.scoreA === "number" ? Math.min(30, Math.max(0, parsed.scoreA)) : null
+      const scoreB = typeof parsed.scoreB === "number" ? Math.min(25, Math.max(0, parsed.scoreB)) : null
+      const scoreC = typeof parsed.scoreC === "number" ? Math.min(25, Math.max(0, parsed.scoreC)) : null
+      const scoreD = typeof parsed.scoreD === "number" ? Math.min(20, Math.max(0, parsed.scoreD)) : null
+      const computedScore = scoreA != null && scoreB != null && scoreC != null && scoreD != null
+        ? scoreA + scoreB + scoreC + scoreD
+        : null
+      if (computedScore != null && parsed.aiTldr && typeof parsed.aiTldr === "object") {
         const tldr = parsed.aiTldr as Record<string, unknown>
         if (typeof tldr.drawback === "string" && typeof tldr.risk === "string" &&
             typeof tldr.standout === "string" && typeof tldr.recommendation === "string") {
-          scoreResult = { aiScore: Math.round(parsed.aiScore), aiTldr: tldr as { drawback: string; risk: string; standout: string; recommendation: string } }
+          scoreResult = { aiScore: computedScore, aiTldr: tldr as { drawback: string; risk: string; standout: string; recommendation: string } }
         }
       }
     } catch (scoreErr) {
